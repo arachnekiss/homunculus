@@ -22,7 +22,11 @@ CORS(app)
 
 # 애플리케이션 시작 시 데이터베이스 초기화
 with app.app_context():
-    init_db()
+    # 모델 클래스 가져오기
+    from models import Base
+    from database import engine
+    # 테이블 생성
+    Base.metadata.create_all(bind=engine)
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):

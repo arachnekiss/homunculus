@@ -1,48 +1,26 @@
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import scoped_session, sessionmaker
 from dotenv import load_dotenv
+from database import db_session, engine
+from models import Base, Character, CharacterExpression, User
 
 # 환경 변수 로드
 load_dotenv()
 
-# 데이터베이스 URL 가져오기
-DATABASE_URL = os.environ.get("DATABASE_URL")
-if DATABASE_URL is None:
-    raise ValueError("DATABASE_URL 환경 변수가 설정되지 않았습니다.")
-
-# 엔진 생성
-engine = create_engine(str(DATABASE_URL))
-
-# 세션 생성
-db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
-
-# Base 클래스 생성
-Base = declarative_base()
-Base.query = db_session.query_property()
-
 def init_db():
-    # 모델 가져오기
-    import models
-    
     # 테이블 생성
     Base.metadata.create_all(bind=engine)
-    
-    # 잠시 대기 (테이블 생성 확인)
-    import time
-    time.sleep(1)
+    print("테이블 생성 완료")
     
     # 기본 캐릭터 데이터 추가
     add_default_characters()
+    print("기본 캐릭터 추가 완료")
 
 def add_default_characters():
-    from models import Character, CharacterExpression
-    
     # 이미 데이터가 있는지 확인
     existing_characters = db_session.query(Character).all()
     if existing_characters:
         # 이미 데이터가 있으면 추가하지 않음
+        print("이미 기존 캐릭터 데이터가 있습니다.")
         return
     
     # 기본 캐릭터 데이터
@@ -98,6 +76,7 @@ def add_default_characters():
     
     # 저장
     db_session.commit()
+    print("캐릭터 데이터 저장 완료")
     
     # 이제 캐릭터별 표정 데이터 추가
     # 현재는 모든 캐릭터가 동일한 이미지를 사용하므로 간단하게 설정
@@ -117,3 +96,8 @@ def add_default_characters():
     
     # 저장
     db_session.commit()
+    print("캐릭터 표정 데이터 저장 완료")
+
+if __name__ == "__main__":
+    init_db()
+    print("데이터베이스 초기화 완료")
