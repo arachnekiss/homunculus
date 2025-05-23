@@ -3,7 +3,7 @@ import json
 import base64
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import openai
+from openai import OpenAI
 from dotenv import load_dotenv
 from PIL import Image
 import io
@@ -13,7 +13,7 @@ import requests
 load_dotenv()
 
 # Configure OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = Flask(__name__)
 CORS(app)
@@ -35,7 +35,7 @@ def chat():
     try:
         # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
         # do not change this unless explicitly requested by the user
-        response = openai.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": f"You are an anime character with the following traits: {json.dumps(character_persona)}. Respond as this character would, with appropriate tone, expressions, and mannerisms."},
@@ -51,7 +51,7 @@ def chat():
             character_response = "..."
         
         # Get character's emotion based on the response
-        emotion_response = openai.chat.completions.create(
+        emotion_response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "Extract the primary emotion from this anime character's response. Output only one word: happy, sad, angry, surprised, embarrassed, thoughtful, excited, nervous, or neutral."},
@@ -78,7 +78,7 @@ def chat():
 
 @app.route("/api/analyze-expression", methods=["POST"])
 def analyze_expression():
-    if 'image' not in request.json:
+    if not request.json or 'image' not in request.json:
         return jsonify({"error": "No image provided"}), 400
     
     try:
@@ -90,7 +90,7 @@ def analyze_expression():
         
         # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
         # do not change this unless explicitly requested by the user
-        response = openai.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {
@@ -112,7 +112,11 @@ def analyze_expression():
             max_tokens=10
         )
         
-        emotion = response.choices[0].message.content.strip().lower()
+        emotion = response.choices[0].message.content
+        if emotion is None:
+            emotion = "neutral"
+        else:
+            emotion = emotion.strip().lower()
         
         return jsonify({
             "emotion": emotion
@@ -125,11 +129,14 @@ def analyze_expression():
 @app.route("/api/text-to-speech", methods=["POST"])
 def text_to_speech():
     data = request.json
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+        
     text = data.get("text", "")
     voice = data.get("voice", "nova")  # Default: nova
     
     try:
-        response = openai.audio.speech.create(
+        response = client.audio.speech.create(
             model="tts-1",
             voice=voice,
             input=text
@@ -152,6 +159,9 @@ def text_to_speech():
 @app.route("/api/get-character-expressions", methods=["POST"])
 def get_character_expressions():
     data = request.json
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+        
     base_image = data.get("baseImage", "")
     emotions = data.get("emotions", ["happy", "sad", "angry", "surprised", "neutral"])
     
@@ -162,13 +172,18 @@ def get_character_expressions():
     
     try:
         # Decode base image
-        image_data = base_image.split(',')[1] if ',' in base_image else base_image
-        image_bytes = base64.b64decode(image_data)
-        
-        # For this implementation, we'll just return the base image for all emotions
-        # In a production app, we would use AI to generate variations
-        for emotion in emotions:
-            emotion_images[emotion] = base_image
+        if base_image:
+            image_data = base_image.split(',')[1] if ',' in base_image else base_image
+            image_bytes = base64.b64decode(image_data)
+            
+            # For this implementation, we'll just return the base image for all emotions
+            # In a production app, we would use AI to generate variations
+            for emotion in emotions:
+                emotion_images[emotion] = base_image
+        else:
+            # Return empty dictionary if no base image provided
+            for emotion in emotions:
+                emotion_images[emotion] = ""
             
         return jsonify({
             "expressions": emotion_images
@@ -181,6 +196,9 @@ def get_character_expressions():
 @app.route("/api/save-credits", methods=["POST"])
 def save_credits():
     data = request.json
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+        
     user_id = data.get("userId", "user1")  # Default: user1
     credits = data.get("credits", 0)
     
@@ -198,7 +216,7 @@ def save_credits():
 
 @app.route("/api/get-credits", methods=["GET"])
 def get_credits():
-    user_id = request.args.get("userId", "user1")  # Default: user1
+    user_id = request.args.get("userId", "user1") if request.args else "user1"
     
     # In a production app, this would query a database
     # For this example, we'll return a fixed number
