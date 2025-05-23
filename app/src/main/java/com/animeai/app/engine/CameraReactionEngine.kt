@@ -1,110 +1,107 @@
 package com.animeai.app.engine
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.util.Base64
 import android.util.Log
 import androidx.camera.core.ImageProxy
+import com.aallam.openai.api.chat.ChatCompletion
 import com.aallam.openai.api.chat.ChatCompletionRequest
 import com.aallam.openai.api.chat.ChatMessage
 import com.aallam.openai.api.chat.ChatRole
-import com.aallam.openai.api.chat.Content
-import com.aallam.openai.api.chat.ImageContent
-import com.aallam.openai.api.chat.TextContent
 import com.aallam.openai.api.model.ModelId
 import com.aallam.openai.client.OpenAI
 import com.animeai.app.model.Emotion
-import com.animeai.app.util.ImageProcessing
+import com.animeai.app.model.OpenAIModels
+import com.animeai.app.util.ImageUtil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
+/**
+ * Engine for analyzing user facial expressions via camera
+ * and generating appropriate character reactions
+ */
 @Singleton
 class CameraReactionEngine @Inject constructor(
     private val openAI: OpenAI,
-    private val imageProcessing: ImageProcessing
+    private val imageUtil: ImageUtil
 ) {
+    private val TAG = "CameraReactionEngine"
     
-    // Analyze user's face to detect emotion
-    suspend fun analyzeUserExpression(imageProxy: ImageProxy): Emotion {
-        return withContext(Dispatchers.IO) {
-            try {
-                Log.d(TAG, "Analyzing user expression")
-                
-                // Convert the camera image to a format we can send to the API
-                val bitmap = imageProcessing.imageProxyToBitmap(imageProxy)
-                val base64Image = bitmap.toBase64String()
-                
-                // Create the image content for the API
-                val imageContent = ImageContent(
-                    data = base64Image,
-                    mimeType = "image/jpeg"
-                )
-                
-                // Analyze the image using GPT-4 nano for speed
-                val request = ChatCompletionRequest(
-                    model = ModelId("gpt-4.1-nano"),
-                    messages = listOf(
-                        ChatMessage(
-                            role = ChatRole.System,
-                            content = listOf(
-                                TextContent(
-                                    """
-                                    Analyze the facial expression in the image and determine the user's emotion.
-                                    Respond with exactly one of these emotions only:
-                                    - happy
-                                    - sad
-                                    - angry
-                                    - surprised
-                                    - embarrassed
-                                    - neutral
-                                    No explanations, just the emotion name in lowercase.
-                                    """
-                                )
-                            )
+    /**
+     * Analyze a camera image to detect user emotion
+     */
+    suspend fun analyzeUserExpression(imageProxy: ImageProxy): Emotion = withContext(Dispatchers.IO) {
+        try {
+            Log.d(TAG, "Analyzing user expression from camera")
+            
+            // Convert image to bitmap
+            val bitmap = imageUtil.imageProxyToBitmap(imageProxy)
+            
+            // Resize for efficiency
+            val resizedBitmap = imageUtil.resizeBitmap(bitmap, 512, 512)
+            
+            // Convert to Base64
+            val base64Image = bitmapToBase64(resizedBitmap)
+            
+            // Create GPT-4 vision prompt
+            val messages = listOf(
+                ChatMessage(
+                    role = ChatRole.User,
+                    content = listOf(
+                        ChatMessage.Content.Text(
+                            "Analyze this facial expression. Return only one word: happy, sad, surprised, neutral, angry, or embarrassed. Nothing else."
                         ),
-                        ChatMessage(
-                            role = ChatRole.User,
-                            content = listOf(imageContent)
-                        )
-                    ),
-                    maxTokens = 50
+                        ChatMessage.Content.Image(base64Image)
+                    )
                 )
-                
-                val response = openAI.chatCompletion(request)
-                val emotionText = response.choices.first().message.content.toString().trim().lowercase()
-                
-                Log.d(TAG, "Detected emotion: $emotionText")
-                
-                // Map the emotion text to our Emotion enum
-                when (emotionText) {
-                    "happy" -> Emotion.HAPPY
-                    "sad" -> Emotion.SAD
-                    "angry" -> Emotion.ANGRY
-                    "surprised" -> Emotion.SURPRISED
-                    "embarrassed" -> Emotion.EMBARRASSED
-                    else -> Emotion.NEUTRAL
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error analyzing user expression", e)
-                Emotion.NEUTRAL // Default to neutral on error
-            } finally {
-                imageProxy.close()
-            }
+            )
+            
+            // Create chat completion request
+            val completionRequest = ChatCompletionRequest(
+                model = ModelId(OpenAIModels.GPT_4_1_NANO),
+                messages = messages,
+                maxTokens = 10
+            )
+            
+            // Get response from OpenAI
+            val completion: ChatCompletion = openAI.chatCompletion(completionRequest)
+            val response = completion.choices.first().message.content
+                ?.trim()?.lowercase() ?: "neutral"
+            
+            Log.d(TAG, "Detected emotion: $response")
+            
+            // Parse the detected emotion
+            return@withContext parseEmotion(response)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error analyzing user expression", e)
+            return@withContext Emotion.NEUTRAL
         }
     }
     
-    // Helper extension to convert Bitmap to Base64 string
-    private fun Bitmap.toBase64String(): String {
+    /**
+     * Convert bitmap to Base64
+     */
+    private fun bitmapToBase64(bitmap: Bitmap): String {
         val byteArrayOutputStream = ByteArrayOutputStream()
-        this.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
         val byteArray = byteArrayOutputStream.toByteArray()
         return Base64.encodeToString(byteArray, Base64.DEFAULT)
     }
     
-    companion object {
-        private const val TAG = "CameraReactionEngine"
+    /**
+     * Parse emotion string to Emotion enum
+     */
+    private fun parseEmotion(emotionStr: String): Emotion {
+        return when (emotionStr.trim().lowercase()) {
+            "happy" -> Emotion.HAPPY
+            "sad" -> Emotion.SAD
+            "angry" -> Emotion.ANGRY
+            "surprised" -> Emotion.SURPRISED
+            "embarrassed" -> Emotion.EMBARRASSED
+            else -> Emotion.NEUTRAL
+        }
     }
 }
