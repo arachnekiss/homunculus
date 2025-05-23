@@ -242,6 +242,48 @@ def get_character_expressions():
         print(f"Error in get-character-expressions endpoint: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+# 새 캐릭터 이미지를 생성하는 엔드포인트
+@app.route("/api/generate-character-image", methods=["POST"])
+def generate_character_image():
+    data = request.json
+    if not data or 'prompt' not in data:
+        return jsonify({"error": "No prompt provided"}), 400
+
+    prompt = data.get("prompt")
+    size = data.get("size", "1024x1024")
+    image_input = data.get("image")
+    animate = data.get("animate", False)
+
+    # Build parameters for OpenAI image generation
+    params = {
+        "model": "gpt-image-1",
+        "prompt": prompt,
+        "size": size,
+        "n": 1,
+        "response_format": "b64_json",
+    }
+
+    if image_input:
+        # Remove possible header from base64
+        params["image"] = image_input.split(',')[1] if ',' in image_input else image_input
+
+    if animate:
+        params["n"] = 3  # return multiple frames
+
+    try:
+        response = client.images.generate(**params)
+
+        if animate:
+            frames = [img.b64_json for img in response.data]
+            return jsonify({"frames": frames})
+        else:
+            image_base64 = response.data[0].b64_json
+            return jsonify({"image": image_base64})
+
+    except Exception as e:
+        print(f"Error in generate-character-image endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/save-credits", methods=["POST"])
 def save_credits():
     data = request.json

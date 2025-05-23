@@ -3,354 +3,154 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>캐릭터 애니메이션 간단 데모</title>
+  <title>AnimeAI Demo</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      background-color: #f7f9fc;
-    }
-    
-    h1 {
-      color: #8A2BE2;
-      margin-bottom: 20px;
-    }
-    
-    .demo-container {
-      max-width: 800px;
-      width: 100%;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      padding: 20px;
-      margin-bottom: 20px;
-    }
-    
-    .character-container {
-      width: 100%;
-      height: 400px;
-      position: relative;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background-color: #f0f4ff;
-      border-radius: 8px;
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
-    
-    #characterImage {
-      max-height: 90%;
-      max-width: 90%;
-      transition: transform 0.3s ease, filter 0.3s ease;
-    }
-    
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    
-    .emotion-btn {
-      background-color: #e0e0ff;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 20px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .emotion-btn:hover {
-      background-color: #c0c0ff;
-    }
-    
-    .emotion-btn.active {
-      background-color: #8A2BE2;
-      color: white;
-    }
-    
-    .input-box {
-      display: flex;
-      gap: 10px;
-      width: 100%;
-    }
-    
-    #textInput {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      font-size: 16px;
-    }
-    
-    #speakButton {
-      background-color: #8A2BE2;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 16px;
-    }
-    
-    #speakButton:hover {
-      background-color: #7722CC;
-    }
-    
-    .speech-bubble {
-      position: absolute;
-      background: white;
-      padding: 15px;
-      border-radius: 10px;
-      max-width: 70%;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      top: 50px;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      pointer-events: none;
-      z-index: 10;
-    }
-    
-    .speech-bubble:after {
-      content: '';
-      position: absolute;
-      bottom: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-width: 10px 10px 0;
-      border-style: solid;
-      border-color: white transparent transparent;
-    }
-    
-    .speech-bubble.active {
-      opacity: 1;
-    }
+    body { margin:0; font-family: Arial, sans-serif; background:#f7f9fc; display:flex; flex-direction:column; align-items:center; }
+    header { width:100%; background:#8A2BE2; color:#fff; display:flex; justify-content:space-between; align-items:center; padding:10px 16px; }
+    .menu-buttons button { background:none; border:none; color:#fff; font-size:18px; cursor:pointer; margin-left:10px; }
+    .container { width:100%; max-width:600px; padding:16px; }
+    .character-area { width:100%; height:300px; background:#eef2ff; border-radius:8px; display:flex; justify-content:center; align-items:center; position:relative; overflow:hidden; }
+    .character-area img { max-width:90%; max-height:90%; transition:transform 0.3s ease, filter 0.3s ease; }
+    #speechBubble { position:absolute; top:20px; background:#fff; padding:10px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); opacity:0; transition:opacity 0.3s ease; }
+    #speechBubble.active { opacity:1; }
+    .chat-log { margin-top:16px; height:200px; overflow-y:auto; background:#fff; border-radius:8px; padding:10px; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+    .chat-message { margin-bottom:8px; }
+    .chat-message.user { text-align:right; }
+    .input-area { display:flex; margin-top:10px; gap:8px; }
+    .input-area input { flex:1; padding:8px; border:1px solid #ccc; border-radius:4px; }
+    .input-area button { padding:8px 16px; background:#8A2BE2; color:#fff; border:none; border-radius:4px; cursor:pointer; }
+    .generate-area { display:flex; flex-direction:column; margin-top:16px; gap:8px; }
+    .generate-area input[type="text"] { flex:1; }
+    .generate-area label { display:flex; align-items:center; gap:4px; font-size:14px; }
   </style>
 </head>
 <body>
-  <h1>캐릭터 애니메이션 간단 데모</h1>
-  
-  <div class="demo-container">
-    <div class="character-container">
-      <img id="characterImage" src="/assets/character_images/gyaru.png" alt="애니메이션 캐릭터">
-      <div id="speechBubble" class="speech-bubble"></div>
+  <header>
+    <div>AnimeAI</div>
+    <div class="menu-buttons">
+      <button id="voiceMode">🔊</button>
+      <button id="videoMode">📞</button>
+      <button id="settingsBtn">⚙️</button>
     </div>
-    
-    <div class="controls">
-      <button class="emotion-btn active" data-emotion="neutral">기본</button>
-      <button class="emotion-btn" data-emotion="happy">행복</button>
-      <button class="emotion-btn" data-emotion="sad">슬픔</button>
-      <button class="emotion-btn" data-emotion="angry">화남</button>
-      <button class="emotion-btn" data-emotion="surprised">놀람</button>
-      <button class="emotion-btn" data-emotion="embarrassed">당황</button>
+  </header>
+  <div class="container">
+    <div class="character-area">
+      <img id="characterImage" src="/assets/character_images/gyaru.png" alt="character">
+      <div id="speechBubble"></div>
     </div>
-    
-    <div class="input-box">
-      <input type="text" id="textInput" placeholder="메시지를 입력하세요...">
-      <button id="speakButton">말하기</button>
+    <div class="chat-log" id="chatLog"></div>
+    <div class="input-area">
+      <input type="text" id="messageInput" placeholder="메시지를 입력하세요...">
+      <button id="sendButton">보내기</button>
+    </div>
+    <div class="generate-area">
+      <input type="file" id="imageInput" accept="image/*">
+      <input type="text" id="promptInput" placeholder="캐릭터 설명을 입력하세요...">
+      <label><input type="checkbox" id="animateCheckbox"> animate</label>
+      <button id="generateButton">캐릭터 생성</button>
     </div>
   </div>
-  
   <script>
-    // DOM 요소
     const characterImage = document.getElementById('characterImage');
-    const emotionButtons = document.querySelectorAll('.emotion-btn');
-    const textInput = document.getElementById('textInput');
-    const speakButton = document.getElementById('speakButton');
     const speechBubble = document.getElementById('speechBubble');
-    
-    // 현재 상태
-    let currentEmotion = 'neutral';
-    let isSpeaking = false;
-    let speakingTimeout = null;
-    
-    // 감정별 변형 매핑
+    const chatLog = document.getElementById('chatLog');
+    const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
+    const promptInput = document.getElementById('promptInput');
+    const generateButton = document.getElementById('generateButton');
+    const imageInput = document.getElementById('imageInput');
+    const animateCheckbox = document.getElementById('animateCheckbox');
+
+    let chatHistory = [];
+    let speakingInterval = null;
     const emotionStyles = {
-      neutral: {
-        transform: 'translateY(0) rotate(0deg)',
-        filter: 'brightness(1) saturate(1)'
-      },
-      happy: {
-        transform: 'translateY(-10px) rotate(1deg)',
-        filter: 'brightness(1.1) saturate(1.2)'
-      },
-      sad: {
-        transform: 'translateY(5px) rotate(-1deg)',
-        filter: 'brightness(0.9) saturate(0.8)'
-      },
-      angry: {
-        transform: 'translateY(-5px) rotate(-2deg)',
-        filter: 'brightness(1.05) saturate(1.3) contrast(1.1)'
-      },
-      surprised: {
-        transform: 'translateY(-15px) scale(1.05)',
-        filter: 'brightness(1.15) contrast(1.05)'
-      },
-      embarrassed: {
-        transform: 'translateY(0) rotate(2deg)',
-        filter: 'brightness(1.05) saturate(1.1) hue-rotate(5deg)'
-      }
+      neutral:{transform:'translateY(0)',filter:'brightness(1)'},
+      happy:{transform:'translateY(-10px)',filter:'brightness(1.1)'},
+      sad:{transform:'translateY(5px)',filter:'brightness(0.9)'},
+      angry:{transform:'translateY(-5px)',filter:'brightness(1.05)'},
+      surprised:{transform:'translateY(-15px)',filter:'brightness(1.15)'}
     };
-    
-    // 감정 변경 함수
-    function changeEmotion(emotion) {
-      if (!emotionStyles[emotion]) return;
-      
-      // 이전 활성 버튼 비활성화
-      emotionButtons.forEach(btn => btn.classList.remove('active'));
-      
-      // 현재 감정 버튼 활성화
-      const activeButton = document.querySelector(`.emotion-btn[data-emotion="${emotion}"]`);
-      if (activeButton) activeButton.classList.add('active');
-      
-      // 감정 상태 업데이트
-      currentEmotion = emotion;
-      
-      // 캐릭터 스타일 변경
-      characterImage.style.transform = emotionStyles[emotion].transform;
-      characterImage.style.filter = emotionStyles[emotion].filter;
-      
-      // 말하기 중이면 말하기 애니메이션 추가
-      if (isSpeaking) {
-        startSpeakingAnimation();
-      }
+    let currentEmotion = 'neutral';
+    function changeEmotion(em){
+      currentEmotion = emotionStyles[em] ? em : 'neutral';
+      characterImage.style.transform = emotionStyles[currentEmotion].transform;
+      characterImage.style.filter = emotionStyles[currentEmotion].filter;
     }
-    
-    // 말하기 시작 함수
-    function speak(text) {
-      if (!text) return;
-      
-      // 이전에 말하고 있었다면 중지
-      if (isSpeaking) {
-        stopSpeaking();
-      }
-      
-      // 말풍선 표시
+    function speak(text){
+      if(!text) return;
       speechBubble.textContent = text;
       speechBubble.classList.add('active');
-      
-      // 말하기 상태로 변경
-      isSpeaking = true;
-      
-      // 말하기 애니메이션 시작
-      startSpeakingAnimation();
-      
-      // 메시지 길이에 따라 표시 시간 계산
-      const duration = Math.max(2000, text.length * 100);
-      
-      // 일정 시간 후 말하기 중단
-      speakingTimeout = setTimeout(() => {
-        stopSpeaking();
-      }, duration);
-      
-      // 음성 합성 (브라우저 지원 시)
-      if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'ko-KR';
-        window.speechSynthesis.speak(utterance);
-      }
+      const base = emotionStyles[currentEmotion].transform;
+      clearInterval(speakingInterval);
+      speakingInterval = setInterval(()=>{
+        const offsetX = (Math.random()-0.5)*4;
+        const offsetY = (Math.random()-0.5)*4;
+        characterImage.style.transform = `${base} translate(${offsetX}px,${offsetY}px)`;
+      },100);
+      setTimeout(()=>{ stopSpeaking(); }, Math.max(2000,text.length*100));
     }
-    
-    // 말하기 중단 함수
-    function stopSpeaking() {
-      isSpeaking = false;
+    function stopSpeaking(){
+      clearInterval(speakingInterval);
+      characterImage.style.transform = emotionStyles[currentEmotion].transform;
       speechBubble.classList.remove('active');
-      
-      // 말하기 타이머 정리
-      if (speakingTimeout) {
-        clearTimeout(speakingTimeout);
-        speakingTimeout = null;
-      }
-      
-      // 음성 합성 중단
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-      
-      // 말하기 애니메이션 중단
-      stopSpeakingAnimation();
     }
-    
-    // 말하기 애니메이션 시작
-    function startSpeakingAnimation() {
-      // 기존 애니메이션 제거
-      stopSpeakingAnimation();
-      
-      // 기본 스타일 가져오기
-      const baseTransform = emotionStyles[currentEmotion].transform;
-      
-      // 애니메이션 인터벌 설정
-      speakingInterval = setInterval(() => {
-        // 랜덤한 미세 움직임 생성
-        const offsetX = (Math.random() - 0.5) * 4;
-        const offsetY = (Math.random() - 0.5) * 4;
-        const offsetRotate = (Math.random() - 0.5) * 1;
-        
-        // 현재 감정의 기본 변형에 미세 움직임 추가
-        characterImage.style.transform = `${baseTransform} translate(${offsetX}px, ${offsetY}px) rotate(${offsetRotate}deg)`;
-      }, 100);
+    function appendMessage(role,text){
+      const div=document.createElement('div');
+      div.className='chat-message '+role;
+      div.textContent=text;
+      chatLog.appendChild(div);
+      chatLog.scrollTop=chatLog.scrollHeight;
     }
-    
-    // 말하기 애니메이션 중단
-    function stopSpeakingAnimation() {
-      if (speakingInterval) {
-        clearInterval(speakingInterval);
-        speakingInterval = null;
+    sendButton.addEventListener('click', async ()=>{
+      const text=messageInput.value.trim();
+      if(!text) return;
+      appendMessage('user',text);
+      chatHistory.push({role:'user',content:text});
+      messageInput.value='';
+      const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,persona:{},history:chatHistory})});
+      const data=await res.json();
+      if(data.response){
+        appendMessage('ai',data.response);
+        chatHistory.push({role:'assistant',content:data.response});
+        changeEmotion(data.emotion||'neutral');
+        speak(data.response);
       }
-      
-      // 현재 감정의 기본 변형으로 복원
-      if (emotionStyles[currentEmotion]) {
-        characterImage.style.transform = emotionStyles[currentEmotion].transform;
-      }
-    }
-    
-    // 호흡 애니메이션 (미세한 상하 움직임)
-    let breathDir = 1;
-    let breathOffset = 0;
-    let breathAmount = 0.3;
-    
-    setInterval(() => {
-      if (isSpeaking) return; // 말하는 동안은 호흡 애니메이션 중지
-      
-      breathOffset += breathDir * breathAmount;
-      
-      // 방향 전환
-      if (breathOffset > 3 || breathOffset < -3) {
-        breathDir *= -1;
-      }
-      
-      // 현재 변형 스타일 가져오기
-      const baseTransform = emotionStyles[currentEmotion].transform;
-      
-      // 호흡 효과 적용
-      characterImage.style.transform = `${baseTransform} translateY(${breathOffset}px)`;
-    }, 50);
-    
-    // 이벤트 리스너
-    emotionButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        changeEmotion(button.dataset.emotion);
+    });
+    messageInput.addEventListener('keypress',e=>{ if(e.key==='Enter') sendButton.click(); });
+
+    function fileToBase64(file){
+      return new Promise((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onload=()=>resolve(reader.result.split(',')[1]);
+        reader.onerror=reject;
+        reader.readAsDataURL(file);
       });
-    });
-    
-    speakButton.addEventListener('click', () => {
-      speak(textInput.value);
-      textInput.value = '';
-    });
-    
-    textInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        speakButton.click();
+    }
+
+    generateButton.addEventListener('click', async ()=>{
+      const prompt = promptInput.value.trim();
+      if(!prompt && imageInput.files.length===0) return;
+      let imageData='';
+      if(imageInput.files.length>0){
+        imageData = await fileToBase64(imageInput.files[0]);
+      }
+      const animate = animateCheckbox.checked;
+      const res = await fetch('/api/generate-character-image',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({prompt,image:imageData,animate})
+      });
+      const data = await res.json();
+      if(data.image){
+        characterImage.src=`data:image/png;base64,${data.image}`;
+      }else if(data.frames){
+        let idx=0;
+        setInterval(()=>{
+          characterImage.src=`data:image/png;base64,${data.frames[idx%data.frames.length]}`;
+          idx++;
+        },300);
       }
     });
-    
-    // 초기화
-    changeEmotion('neutral');
   </script>
 </body>
 </html>
