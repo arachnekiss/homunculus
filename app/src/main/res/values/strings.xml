@@ -1,0 +1,74 @@
+<resources>
+    <string name="app_name">AI Anime Character</string>
+    
+    <!-- Character Screen -->
+    <string name="character_title">AI Anime Character</string>
+    <string name="type_message">무엇이든 부탁하세요</string>
+    <string name="send_message">Send</string>
+    <string name="camera_button">Camera</string>
+    <string name="microphone_button">Microphone</string>
+    <string name="credits_label">Credits: %1$d</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_title">Character Settings</string>
+    <string name="character_name">Character Name</string>
+    <string name="personality_label">Personality</string>
+    <string name="speech_style_label">Speech Style</string>
+    <string name="background_story">Background Story</string>
+    <string name="voice_settings">Voice Settings</string>
+    <string name="voice_pitch">Pitch: %1$.1f</string>
+    <string name="voice_speed">Speed: %1$.1f</string>
+    <string name="save_changes">Save Changes</string>
+    <string name="generate_new_character">Generate New Character</string>
+    
+    <!-- Store Screen -->
+    <string name="store_title">Credit Store</string>
+    <string name="current_credits">Current Credits</string>
+    <string name="purchase_info">Purchase credits to use with your AI character</string>
+    
+    <!-- Credit Packages -->
+    <string name="small_pack">Small Pack</string>
+    <string name="medium_pack">Medium Pack</string>
+    <string name="large_pack">Large Pack</string>
+    <string name="premium_pack">Premium Pack</string>
+    <string name="credits_amount">%1$d credits</string>
+    <string name="price_format">$%1$.2f</string>
+    
+    <!-- Camera View -->
+    <string name="camera_permission_required">Camera permission is required</string>
+    <string name="request_permission">Request Permission</string>
+    <string name="cancel">Cancel</string>
+    <string name="looking_for_expressions">Looking for facial expressions…</string>
+    
+    <!-- Error Messages -->
+    <string name="error_generating_character">Failed to generate character</string>
+    <string name="error_insufficient_credits">Insufficient credits</string>
+    <string name="error_network">Network error. Please check your connection.</string>
+    <string name="error_api">API error. Please try again later.</string>
+    
+    <!-- Emotions -->
+    <string name="emotion_neutral">Neutral</string>
+    <string name="emotion_happy">Happy</string>
+    <string name="emotion_sad">Sad</string>
+    <string name="emotion_angry">Angry</string>
+    <string name="emotion_surprised">Surprised</string>
+    <string name="emotion_embarrassed">Embarrassed</string>
+    
+    <!-- Personalities -->
+    <string name="personality_friendly">Friendly</string>
+    <string name="personality_shy">Shy</string>
+    <string name="personality_tsundere">Tsundere</string>
+    <string name="personality_cool">Cool</string>
+    <string name="personality_energetic">Energetic</string>
+    <string name="personality_mysterious">Mysterious</string>
+    <string name="personality_serious">Serious</string>
+    
+    <!-- Speech Styles -->
+    <string name="speech_style_formal">Formal</string>
+    <string name="speech_style_casual">Casual</string>
+    <string name="speech_style_cute">Cute</string>
+    <string name="speech_style_poetic">Poetic</string>
+    <string name="speech_style_scholarly">Scholarly</string>
+    <string name="speech_style_playful">Playful</string>
+    <string name="speech_style_reserved">Reserved</string>
+</resources>
