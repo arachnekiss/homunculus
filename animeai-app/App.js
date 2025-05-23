@@ -7,6 +7,7 @@ import { StyleSheet, View, Text } from 'react-native';
 // Import screens
 import HomeScreen from './screens/HomeScreen';
 import SimpleHomeScreen from './screens/SimpleHomeScreen';
+import MainScreen from './screens/MainScreen';
 import CharacterScreen from './screens/CharacterScreen';
 import CameraScreen from './screens/CameraScreen';
 import SettingsScreen from './screens/SettingsScreen';
@@ -34,7 +35,7 @@ export default function App() {
       >
         <Stack.Screen 
           name="Home" 
-          component={SimpleHomeScreen} 
+          component={MainScreen} 
           options={{ title: 'AnimeAI' }} 
         />
         <Stack.Screen 
