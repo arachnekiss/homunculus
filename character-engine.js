@@ -115,14 +115,54 @@ class CharacterEngine {
     }
     
     // 캐릭터 이미지 변경
-    if (this.options.characterElement && this.emotionImageMap[emotion]) {
+    if (this.options.characterElement) {
       // 부드러운 전환 효과
-      this.options.characterElement.style.transition = `opacity ${this.options.emotionTransitionDuration / 1000}s ease`;
-      this.options.characterElement.style.opacity = 0;
+      this.options.characterElement.style.transition = `all ${this.options.emotionTransitionDuration / 1000}s ease`;
+      this.options.characterElement.style.opacity = 0.7;
       
       setTimeout(() => {
-        this.options.characterElement.src = this.emotionImageMap[emotion];
+        // 감정에 따른 이미지 필터 적용 (한 이미지로 여러 감정 표현)
+        const filter = this.getEmotionFilter(emotion);
+        this.options.characterElement.style.filter = filter;
+        
+        // 감정에 따른 CSS 애니메이션 적용
+        this.options.characterElement.classList.remove('emotion-happy', 'emotion-sad', 'emotion-angry', 'emotion-surprised');
+        if (emotion !== 'neutral') {
+          this.options.characterElement.classList.add(`emotion-${emotion}`);
+        }
+        
+        // 화면에 다시 표시
         this.options.characterElement.style.opacity = 1;
+        
+        // 서로 다른 감정에 따라 이미지를 약간 기울이거나 위치 조정 (미세한 움직임)
+        switch(emotion) {
+          case 'happy':
+            this.options.characterElement.style.transform = 'translateY(-5px) rotate(1deg)';
+            break;
+          case 'sad':
+            this.options.characterElement.style.transform = 'translateY(3px) rotate(-1deg)';
+            break;
+          case 'angry':
+            this.options.characterElement.style.transform = 'translateY(-2px) rotate(-2deg)';
+            break;
+          case 'surprised':
+            this.options.characterElement.style.transform = 'translateY(-8px) scale(1.02)';
+            break;
+          case 'embarrassed':
+            this.options.characterElement.style.transform = 'translateY(0) rotate(1.5deg)';
+            break;
+          case 'thoughtful':
+            this.options.characterElement.style.transform = 'translateY(2px) rotate(-0.5deg)';
+            break;
+          case 'excited':
+            this.options.characterElement.style.transform = 'translateY(-6px) rotate(2deg) scale(1.03)';
+            break;
+          case 'nervous':
+            this.options.characterElement.style.transform = 'translateY(1px) rotate(-1deg)';
+            break;
+          default:
+            this.options.characterElement.style.transform = 'translateY(0) rotate(0)';
+        }
       }, this.options.emotionTransitionDuration / 2);
     }
     
@@ -197,6 +237,50 @@ class CharacterEngine {
     
     this.state.isSpeaking = true;
     this.options.characterElement.classList.add('speaking');
+    
+    // 말하기 애니메이션을 위한 미세한 움직임 추가
+    let tiltCounter = 0;
+    
+    // 이전 애니메이션 타이머가 있으면 정리
+    if (this.speakingAnimTimer) {
+      clearInterval(this.speakingAnimTimer);
+    }
+    
+    // 미세한 움직임을 위한 타이머 설정
+    this.speakingAnimTimer = setInterval(() => {
+      if (!this.state.isSpeaking) {
+        clearInterval(this.speakingAnimTimer);
+        return;
+      }
+      
+      tiltCounter++;
+      const currentTilt = Math.sin(tiltCounter * 0.2) * 0.5;
+      const currentPos = Math.sin(tiltCounter * 0.3) * 2;
+      
+      // 현재 감정에 따른 기본 변형에 미세한 움직임 추가
+      let baseTransform = 'translateY(0) rotate(0)';
+      switch(this.state.currentEmotion) {
+        case 'happy': 
+          baseTransform = 'translateY(-5px) rotate(1deg)';
+          break;
+        case 'sad': 
+          baseTransform = 'translateY(3px) rotate(-1deg)';
+          break;
+        case 'angry': 
+          baseTransform = 'translateY(-2px) rotate(-2deg)';
+          break;
+        case 'surprised': 
+          baseTransform = 'translateY(-8px) scale(1.02)';
+          break;
+        case 'embarrassed': 
+          baseTransform = 'translateY(0) rotate(1.5deg)';
+          break;
+        // 다른 감정들에 대한 케이스 생략
+      }
+      
+      // 기본 변형에 미세한 움직임 추가
+      this.options.characterElement.style.transform = `${baseTransform} translateY(${currentPos}px) rotate(${currentTilt}deg)`;
+    }, 50);
   }
   
   /**
@@ -207,6 +291,15 @@ class CharacterEngine {
     
     this.state.isSpeaking = false;
     this.options.characterElement.classList.remove('speaking');
+    
+    // 애니메이션 타이머 정리
+    if (this.speakingAnimTimer) {
+      clearInterval(this.speakingAnimTimer);
+      this.speakingAnimTimer = null;
+    }
+    
+    // 원래 감정 상태로 복원
+    this.changeEmotion(this.state.currentEmotion);
   }
   
   /**
@@ -239,6 +332,27 @@ class CharacterEngine {
   reset() {
     this.stopSpeaking();
     this.changeEmotion(this.options.defaultEmotion);
+  }
+  
+  /**
+   * 이미지 CSS 필터 생성 (캐릭터 감정 시각화)
+   * @param {string} emotion - 감정
+   * @returns {string} - CSS 필터 문자열
+   */
+  getEmotionFilter(emotion) {
+    const filters = {
+      'happy': 'brightness(1.1) saturate(1.2)',
+      'sad': 'brightness(0.9) saturate(0.8) contrast(0.95)',
+      'angry': 'brightness(1.1) saturate(1.3) contrast(1.1) hue-rotate(-5deg)',
+      'surprised': 'brightness(1.15) contrast(1.05)',
+      'neutral': 'brightness(1) saturate(1)',
+      'embarrassed': 'brightness(1.05) saturate(1.1) hue-rotate(5deg)',
+      'thoughtful': 'brightness(0.95) saturate(0.9) contrast(1.05)',
+      'excited': 'brightness(1.2) saturate(1.3) contrast(1.1)',
+      'nervous': 'brightness(0.9) saturate(0.95) contrast(1.05)'
+    };
+    
+    return filters[emotion] || filters['neutral'];
   }
   
   /**

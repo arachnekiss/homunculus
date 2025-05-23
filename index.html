@@ -267,9 +267,60 @@
       animation: speaking 0.5s ease infinite alternate;
     }
     
+    /* 감정별 애니메이션 정의 */
+    .character-main-image.emotion-happy {
+      animation: happy-emotion 2s infinite alternate;
+    }
+    
+    .character-main-image.emotion-sad {
+      animation: sad-emotion 3s infinite alternate;
+    }
+    
+    .character-main-image.emotion-angry {
+      animation: angry-emotion 0.5s infinite alternate;
+    }
+    
+    .character-main-image.emotion-surprised {
+      animation: surprised-emotion 0.7s infinite;
+    }
+    
+    .character-main-image.emotion-embarrassed {
+      animation: embarrassed-emotion 2s infinite alternate;
+    }
+    
     @keyframes speaking {
       0% { transform: scale(1); }
       100% { transform: scale(1.01); }
+    }
+    
+    /* 감정 애니메이션 키프레임 */
+    @keyframes happy-emotion {
+      0% { transform: translateY(-5px) rotate(1deg); }
+      100% { transform: translateY(-7px) rotate(2deg); }
+    }
+    
+    @keyframes sad-emotion {
+      0% { transform: translateY(3px) rotate(-1deg); }
+      100% { transform: translateY(4px) rotate(-1.5deg); }
+    }
+    
+    @keyframes angry-emotion {
+      0% { transform: translateY(-2px) rotate(-1deg); }
+      50% { transform: translateY(-3px) rotate(-2deg); }
+      100% { transform: translateY(-2px) rotate(-1.5deg); }
+    }
+    
+    @keyframes surprised-emotion {
+      0% { transform: translateY(-8px) scale(1.02); }
+      25% { transform: translateY(-9px) scale(1.03); }
+      50% { transform: translateY(-8px) scale(1.02); }
+      75% { transform: translateY(-9px) scale(1.03); }
+      100% { transform: translateY(-8px) scale(1.02); }
+    }
+    
+    @keyframes embarrassed-emotion {
+      0% { transform: translateY(0) rotate(1.5deg); }
+      100% { transform: translateY(1px) rotate(2deg); }
     }
     
     .emotion-badge {
