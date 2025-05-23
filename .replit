@@ -47,7 +47,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd animeai-app && npx expo start --web --port 5173"
+args = "cd animeai-app && NODE_OPTIONS=--no-warnings npx expo start --web --port 5173"
 waitForPort = 5173
 
 [deployment]

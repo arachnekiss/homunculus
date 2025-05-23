@@ -18,6 +18,10 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 app = Flask(__name__)
 CORS(app)
 
+@app.route("/", methods=["GET"])
+def root():
+    return jsonify({"status": "OK", "message": "AnimeAI API Server"})
+
 @app.route("/api/health", methods=["GET"])
 def health_check():
     return jsonify({"status": "OK", "message": "AnimeAI API is running"})

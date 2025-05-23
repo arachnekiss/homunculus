@@ -6,12 +6,13 @@ import { StyleSheet, View, Text } from 'react-native';
 
 // Import screens
 import HomeScreen from './screens/HomeScreen';
+import SimpleHomeScreen from './screens/SimpleHomeScreen';
 import CharacterScreen from './screens/CharacterScreen';
 import CameraScreen from './screens/CameraScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
 // Global API URL configuration
-global.API_URL = 'https://5000-replit-20b2840bd7a9343-6rfczp79fwe.us.replit.dev';
+global.API_URL = 'https://ba6c4fd8-d9b2-4545-a468-61bb4817b458-00-ux6cqw0zrhjv.kirk.replit.dev';
 
 const Stack = createStackNavigator();
 
@@ -33,7 +34,7 @@ export default function App() {
       >
         <Stack.Screen 
           name="Home" 
-          component={HomeScreen} 
+          component={SimpleHomeScreen} 
           options={{ title: 'AnimeAI' }} 
         />
         <Stack.Screen 
