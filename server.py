@@ -242,6 +242,58 @@ def get_character_expressions():
         print(f"Error in get-character-expressions endpoint: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+# 새 캐릭터 이미지를 생성하는 엔드포인트
+@app.route("/api/generate-character-image", methods=["POST"])
+def generate_character_image():
+    data = request.json
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    prompt = data.get("prompt", "")
+    user_image = data.get("image")  # Base64 encoded image, optional
+    size = data.get("size", "1024x1024")
+    animate = data.get("animate", False)
+
+    if not prompt and not user_image:
+        return jsonify({"error": "No prompt or image provided"}), 400
+
+    try:
+        request_payload = {
+            "model": "gpt-image-1",
+            "size": size,
+            "response_format": "b64_json",
+            "n": 1,
+            "quality": "hd",
+        }
+
+        if user_image:
+            image_data = user_image.split(',')[1] if ',' in user_image else user_image
+            request_payload["prompt"] = [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_data}"}}
+            ]
+        else:
+            request_payload["prompt"] = prompt
+
+        response = client.images.generate(**request_payload)
+
+        if animate:
+            animation_frames = []
+            for motion in ["pose1", "pose2", "pose3"]:
+                anim_prompt = prompt + f" {motion}"
+                req = request_payload.copy()
+                req["prompt"] = anim_prompt
+                anim_response = client.images.generate(**req)
+                animation_frames.append(anim_response.data[0].b64_json)
+            return jsonify({"animation": animation_frames})
+        else:
+            image_base64 = response.data[0].b64_json
+            return jsonify({"image": image_base64})
+
+    except Exception as e:
+        print(f"Error in generate-character-image endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/save-credits", methods=["POST"])
 def save_credits():
     data = request.json
