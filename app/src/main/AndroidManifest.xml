@@ -1,43 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    package="com.animeai.app">
 
-    <!-- Internet permissions for OpenAI API calls -->
+    <!-- 인터넷 권한 -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
-    <!-- Camera permissions for emotion detection -->
+    <!-- 카메라 권한 -->
     <uses-permission android:name="android.permission.CAMERA" />
     
-    <!-- Microphone permissions for voice recording -->
+    <!-- 마이크 권한 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     
-    <!-- Storage permissions for saving character data -->
+    <!-- 저장소 권한 (갤러리 접근용) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
                      android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
-                     android:maxSdkVersion="32" />
-    <!-- For Android 13+ -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <application
         android:name=".AnimeAIApplication"
         android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
+        android:label="애니메이션 AI 친구"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AnimeAI"
-        android:usesCleartextTraffic="true"
-        tools:targetApi="33">
+        android:theme="@style/Theme.AnimeAI">
         
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.AnimeAI"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -46,5 +36,4 @@
         </activity>
         
     </application>
-
 </manifest>

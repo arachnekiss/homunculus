@@ -45,6 +45,9 @@ fun CharacterScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     
+    // 카메라 대화상자 표시 상태
+    var showCameraDialog by remember { mutableStateOf(false) }
+    
     // 키보드 컨트롤러 (IME)
     val keyboardController = LocalSoftwareKeyboardController.current
     
@@ -66,6 +69,25 @@ fun CharacterScreen(
                 duration = SnackbarDuration.Short
             )
         }
+    }
+    
+    // 카메라 대화상자 표시
+    if (showCameraDialog) {
+        CameraDialog(
+            onDismiss = { showCameraDialog = false },
+            onCameraCapture = {
+                // 카메라로 사진 촬영 (실제 구현에서는 카메라 권한 등 처리)
+                viewModel.captureUserExpression()
+            },
+            onGallerySelect = {
+                // 갤러리에서 사진 선택 (실제 구현에서는 갤러리 접근 처리)
+                viewModel.captureUserExpression()
+            },
+            onEmotionSelected = { selectedEmotion ->
+                // 직접 감정 선택
+                viewModel.simulateUserEmotion(selectedEmotion)
+            }
+        )
     }
     
     Scaffold(
@@ -182,7 +204,7 @@ fun CharacterScreen(
                         keyboardController?.hide() // 메시지 전송 후 키보드 숨김
                     },
                     onVoiceInput = viewModel::startVoiceRecording,
-                    onCameraInput = viewModel::captureUserExpression,
+                    onCameraInput = { showCameraDialog = true }, // 카메라 버튼 클릭 시 대화상자 표시
                     modifier = Modifier.fillMaxSize()
                 )
             }

@@ -232,6 +232,31 @@ class CharacterViewModel @Inject constructor(
     }
     
     /**
+     * 사용자가 직접 선택한 감정으로 캐릭터에게 반응 유도
+     */
+    fun simulateUserEmotion(emotion: Emotion) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                
+                // 선택한 감정 표시
+                addSystemMessage("선택한 감정: ${emotion.displayName}")
+                
+                // 지연 효과 (너무 빠른 반응은 부자연스러움)
+                delay(500)
+                
+                // 캐릭터 반응 생성
+                reactToUserEmotion(emotion)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error simulating user emotion", e)
+                _error.value = "감정 표현 중 오류가 발생했습니다."
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
      * Get character response to user input
      */
     private fun getCharacterResponse(userText: String) {
