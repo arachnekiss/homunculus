@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from PIL import Image
 import io
 import requests
+from database import db_session, init_db
+from models import User, Character, CharacterExpression, Interaction
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +20,14 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 app = Flask(__name__)
 CORS(app)
 
+# 애플리케이션 시작 시 데이터베이스 초기화
+with app.app_context():
+    init_db()
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    db_session.remove()
+
 @app.route("/", methods=["GET"])
 def root():
     return jsonify({"status": "OK", "message": "AnimeAI API Server"})
@@ -25,6 +35,31 @@ def root():
 @app.route("/api/health", methods=["GET"])
 def health_check():
     return jsonify({"status": "OK", "message": "AnimeAI API is running"})
+
+@app.route("/api/characters", methods=["GET"])
+def get_characters():
+    try:
+        characters = db_session.query(Character).all()
+        character_list = []
+        
+        for character in characters:
+            char_dict = character.to_dict()
+            
+            # 감정 표현 이미지 가져오기
+            expressions = {}
+            for expr in character.expressions:
+                expressions[expr.emotion] = expr.image_url
+                
+            char_dict["expressions"] = expressions
+            character_list.append(char_dict)
+            
+        return jsonify({
+            "success": True,
+            "characters": character_list
+        })
+    except Exception as e:
+        print(f"Error in get-characters endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
@@ -206,13 +241,24 @@ def save_credits():
     user_id = data.get("userId", "user1")  # Default: user1
     credits = data.get("credits", 0)
     
-    # In a production app, this would save to a database
-    # For this example, we'll just return a success response
     try:
+        # 데이터베이스에서 사용자 찾기
+        user = db_session.query(User).filter_by(username=user_id).first()
+        
+        # 사용자가 없으면 생성
+        if not user:
+            user = User(username=user_id, credits=credits)
+            db_session.add(user)
+        else:
+            # 기존 사용자 크레딧 업데이트
+            user.credits = credits
+            
+        db_session.commit()
+        
         return jsonify({
             "success": True,
-            "userId": user_id,
-            "creditsRemaining": credits
+            "userId": user.username,
+            "creditsRemaining": user.credits
         })
     except Exception as e:
         print(f"Error in save-credits endpoint: {str(e)}")
@@ -222,12 +268,19 @@ def save_credits():
 def get_credits():
     user_id = request.args.get("userId", "user1") if request.args else "user1"
     
-    # In a production app, this would query a database
-    # For this example, we'll return a fixed number
     try:
+        # 데이터베이스에서 사용자 찾기
+        user = db_session.query(User).filter_by(username=user_id).first()
+        
+        # 사용자가 없으면 생성
+        if not user:
+            user = User(username=user_id, credits=100)
+            db_session.add(user)
+            db_session.commit()
+            
         return jsonify({
-            "userId": user_id,
-            "creditsRemaining": 100  # Default value
+            "userId": user.username,
+            "creditsRemaining": user.credits
         })
     except Exception as e:
         print(f"Error in get-credits endpoint: {str(e)}")
