@@ -1,139 +1,37 @@
 package com.animeai.app.service
 
 import android.util.Log
-import com.aallam.openai.api.chat.ChatCompletion
-import com.aallam.openai.api.chat.ChatCompletionRequest
 import com.aallam.openai.api.chat.ChatMessage
 import com.aallam.openai.api.chat.ChatRole
-import com.aallam.openai.api.model.ModelId
-import com.aallam.openai.client.OpenAI
 import com.animeai.app.model.AnimeCharacter
 import com.animeai.app.model.CharacterResponse
 import com.animeai.app.model.Emotion
-import com.animeai.app.model.OpenAIModels
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Service for handling conversations with anime characters
+ * 실제 구현된 대화 서비스
  */
 @Singleton
-class ConversationService @Inject constructor(
+class ConversationServiceImpl @Inject constructor(
     private val openAIService: OpenAIService,
     private val voiceService: VoiceService
 ) {
-    private val TAG = "ConversationService"
+    private val TAG = "ConversationServiceImpl"
     
-    // Cache of recent messages to maintain context
+    // 대화 내용 캐시
     private val conversationCache = mutableMapOf<String, MutableList<ChatMessage>>()
     
     /**
-     * Generate a response from the character to user input
+     * 캐릭터의 인사말 생성
      */
-    suspend fun generateResponse(
-        userInput: String,
-        character: AnimeCharacter,
-        userId: String,
-        conversationId: String
-    ): CharacterResponse = withContext(Dispatchers.IO) {
+    suspend fun getCharacterGreeting(character: AnimeCharacter): CharacterResponse = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "Generating response to: $userInput")
+            Log.d(TAG, "캐릭터 인사말 생성: ${character.id}")
             
-            // Get or create conversation history
-            val messagesHistory = getOrCreateConversation(conversationId)
-            
-            // Add user message
-            val userMessage = ChatMessage(
-                role = ChatRole.User,
-                content = userInput
-            )
-            messagesHistory.add(userMessage)
-            
-            // Prepare persona instructions
-            val persona = character.persona ?: throw IllegalStateException("Character has no persona")
-            val systemPrompt = """
-                You are ${persona.name}, an anime character with these traits:
-                - Personality: ${persona.personality.apiValue}
-                - Speech style: ${persona.speechStyle.apiValue}
-                - Background: ${persona.backgroundStory}
-                
-                Respond in character, maintaining consistency with your persona.
-                Keep responses concise (1-3 sentences).
-                Use appropriate Japanese honorifics if needed.
-                Include an emotion with your response from this list: neutral, happy, sad, angry, surprised, embarrassed.
-                
-                Format your response exactly like this:
-                EMOTION: [emotion]
-                RESPONSE: [your in-character response]
-            """.trimIndent()
-            
-            // Get current history, limited to last 10 messages to save on tokens
-            val recentMessages = messagesHistory.takeLast(10).toMutableList()
-            
-            // Add system prompt at the beginning
-            recentMessages.add(0, ChatMessage(
-                role = ChatRole.System,
-                content = systemPrompt
-            ))
-            
-            // Create chat completion request
-            val completionRequest = ChatCompletionRequest(
-                model = ModelId(OpenAIModels.GPT_4_1),
-                messages = recentMessages,
-                temperature = 0.8,
-                maxTokens = 300
-            )
-            
-            // Get response from OpenAI
-            val completion: ChatCompletion = openAI.chatCompletion(completionRequest)
-            val responseContent = completion.choices.first().message.content
-                ?: throw IllegalStateException("Empty response from OpenAI")
-            
-            Log.d(TAG, "Generated response: $responseContent")
-            
-            // Parse response to extract emotion and text
-            val responseData = parseResponse(responseContent)
-            
-            // Add assistant response to history
-            messagesHistory.add(ChatMessage(
-                role = ChatRole.Assistant,
-                content = responseData.second
-            ))
-            
-            // Generate audio for the response
-            val audio = voiceService.textToSpeech(
-                text = responseData.second,
-                voiceSettings = persona.voiceSettings
-            )
-            
-            CharacterResponse(
-                text = responseData.second,
-                audio = audio,
-                emotion = responseData.first
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Error generating response", e)
-            
-            // Return a fallback response
-            CharacterResponse(
-                text = "죄송합니다, 지금은 대답할 수 없어요...",
-                emotion = Emotion.NEUTRAL
-            )
-        }
-    }
-    
-    /**
-     * Generate an initial greeting from the character
-     */
-    suspend fun getCharacterGreeting(
-        character: AnimeCharacter
-    ): CharacterResponse = withContext(Dispatchers.IO) {
-        try {
-            Log.d(TAG, "Generating greeting for character: ${character.id}")
-            
-            // Prepare persona instructions
+            // 페르소나 지시사항 준비
             val persona = character.persona ?: throw IllegalStateException("Character has no persona")
             val systemPrompt = """
                 You are ${persona.name}, an anime character with these traits:
@@ -152,7 +50,7 @@ class ConversationService @Inject constructor(
                 RESPONSE: [your in-character greeting]
             """.trimIndent()
             
-            // Create messages
+            // 메시지 생성
             val messages = listOf(
                 ChatMessage(
                     role = ChatRole.System,
@@ -160,25 +58,15 @@ class ConversationService @Inject constructor(
                 )
             )
             
-            // Create chat completion request
-            val completionRequest = ChatCompletionRequest(
-                model = ModelId(OpenAIModels.GPT_4_1),
-                messages = messages,
-                temperature = 0.8,
-                maxTokens = 150
-            )
+            // OpenAIService를 통해 응답 생성
+            val responseContent = openAIService.chatCompletion(messages)
             
-            // Get response from OpenAI
-            val completion: ChatCompletion = openAI.chatCompletion(completionRequest)
-            val responseContent = completion.choices.first().message.content
-                ?: throw IllegalStateException("Empty response from OpenAI")
+            Log.d(TAG, "생성된 인사말: $responseContent")
             
-            Log.d(TAG, "Generated greeting: $responseContent")
-            
-            // Parse response to extract emotion and text
+            // 응답 파싱하여 감정과 텍스트 추출
             val responseData = parseResponse(responseContent)
             
-            // Generate audio for the greeting
+            // 음성 생성
             val audio = voiceService.textToSpeech(
                 text = responseData.second,
                 voiceSettings = persona.voiceSettings
@@ -190,9 +78,9 @@ class ConversationService @Inject constructor(
                 emotion = responseData.first
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Error generating greeting", e)
+            Log.e(TAG, "인사말 생성 오류", e)
             
-            // Return a fallback greeting
+            // 기본 인사말 반환
             CharacterResponse(
                 text = "안녕하세요! 만나서 반가워요.",
                 emotion = Emotion.HAPPY
@@ -201,16 +89,101 @@ class ConversationService @Inject constructor(
     }
     
     /**
-     * Generate a reaction to user's detected emotion
+     * 사용자 입력에 대한 캐릭터 응답 생성
+     */
+    suspend fun generateResponse(
+        userInput: String,
+        character: AnimeCharacter,
+        userId: String,
+        conversationId: String
+    ): CharacterResponse = withContext(Dispatchers.IO) {
+        try {
+            Log.d(TAG, "응답 생성 중: $userInput")
+            
+            // 대화 기록 가져오기 또는 생성
+            val messagesHistory = getOrCreateConversation(conversationId)
+            
+            // 사용자 메시지 추가
+            val userMessage = ChatMessage(
+                role = ChatRole.User,
+                content = userInput
+            )
+            messagesHistory.add(userMessage)
+            
+            // 페르소나 지시사항 준비
+            val persona = character.persona ?: throw IllegalStateException("Character has no persona")
+            val systemPrompt = """
+                You are ${persona.name}, an anime character with these traits:
+                - Personality: ${persona.personality.apiValue}
+                - Speech style: ${persona.speechStyle.apiValue}
+                - Background: ${persona.backgroundStory}
+                
+                Respond in character, maintaining consistency with your persona.
+                Keep responses concise (1-3 sentences).
+                Use appropriate Japanese honorifics if needed.
+                Express the current emotion in your response from this list: neutral, happy, sad, angry, surprised, embarrassed.
+                
+                Format your response exactly like this:
+                EMOTION: [emotion]
+                RESPONSE: [your in-character response]
+            """.trimIndent()
+            
+            // 최신 대화 내용 (토큰 절약을 위해 최근 10개로 제한)
+            val recentMessages = messagesHistory.takeLast(10).toMutableList()
+            
+            // 시스템 프롬프트를 처음에 추가
+            recentMessages.add(0, ChatMessage(
+                role = ChatRole.System,
+                content = systemPrompt
+            ))
+            
+            // OpenAIService를 통해 응답 생성
+            val responseContent = openAIService.chatCompletion(recentMessages)
+            
+            Log.d(TAG, "생성된 응답: $responseContent")
+            
+            // 응답 파싱하여 감정과 텍스트 추출
+            val responseData = parseResponse(responseContent)
+            
+            // 어시스턴트 응답을 기록에 추가
+            messagesHistory.add(ChatMessage(
+                role = ChatRole.Assistant,
+                content = responseData.second
+            ))
+            
+            // 응답 음성 생성
+            val audio = voiceService.textToSpeech(
+                text = responseData.second,
+                voiceSettings = persona.voiceSettings
+            )
+            
+            CharacterResponse(
+                text = responseData.second,
+                audio = audio,
+                emotion = responseData.first
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "응답 생성 오류", e)
+            
+            // 기본 응답 반환
+            CharacterResponse(
+                text = "죄송합니다, 지금은 대답할 수 없어요...",
+                emotion = Emotion.NEUTRAL
+            )
+        }
+    }
+    
+    /**
+     * 사용자 감정에 대한 캐릭터 반응 생성
      */
     suspend fun generateEmotionReaction(
         character: AnimeCharacter,
         userEmotion: Emotion
     ): CharacterResponse = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "Generating reaction to user emotion: ${userEmotion.apiValue}")
+            Log.d(TAG, "감정 반응 생성 중: ${userEmotion.apiValue}")
             
-            // Prepare persona instructions
+            // 페르소나 지시사항 준비
             val persona = character.persona ?: throw IllegalStateException("Character has no persona")
             val systemPrompt = """
                 You are ${persona.name}, an anime character with these traits:
@@ -229,7 +202,7 @@ class ConversationService @Inject constructor(
                 RESPONSE: [your in-character reaction]
             """.trimIndent()
             
-            // Create messages
+            // 메시지 생성
             val messages = listOf(
                 ChatMessage(
                     role = ChatRole.System,
@@ -237,25 +210,15 @@ class ConversationService @Inject constructor(
                 )
             )
             
-            // Create chat completion request
-            val completionRequest = ChatCompletionRequest(
-                model = ModelId(OpenAIModels.GPT_4_1),
-                messages = messages,
-                temperature = 0.8,
-                maxTokens = 150
-            )
+            // OpenAIService를 통해 응답 생성
+            val responseContent = openAIService.chatCompletion(messages)
             
-            // Get response from OpenAI
-            val completion: ChatCompletion = openAI.chatCompletion(completionRequest)
-            val responseContent = completion.choices.first().message.content
-                ?: throw IllegalStateException("Empty response from OpenAI")
+            Log.d(TAG, "생성된 반응: $responseContent")
             
-            Log.d(TAG, "Generated reaction: $responseContent")
-            
-            // Parse response to extract emotion and text
+            // 응답 파싱하여 감정과 텍스트 추출
             val responseData = parseResponse(responseContent)
             
-            // Generate audio for the reaction
+            // 음성 생성
             val audio = voiceService.textToSpeech(
                 text = responseData.second,
                 voiceSettings = persona.voiceSettings
@@ -267,9 +230,9 @@ class ConversationService @Inject constructor(
                 emotion = responseData.first
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Error generating emotion reaction", e)
+            Log.e(TAG, "감정 반응 생성 오류", e)
             
-            // Return a fallback reaction
+            // 기본 반응 반환
             CharacterResponse(
                 text = "흠... 그렇군요.",
                 emotion = Emotion.NEUTRAL
@@ -278,27 +241,27 @@ class ConversationService @Inject constructor(
     }
     
     /**
-     * Get or create a conversation history for the given ID
+     * 대화 ID로 대화 기록 가져오기 또는 생성
      */
     private fun getOrCreateConversation(conversationId: String): MutableList<ChatMessage> {
         return conversationCache.getOrPut(conversationId) { mutableListOf() }
     }
     
     /**
-     * Parse the formatted response from OpenAI
-     * Returns a pair of (Emotion, response text)
+     * OpenAI 응답에서 감정과 텍스트 추출
+     * (Emotion, 응답 텍스트) 쌍 반환
      */
     private fun parseResponse(response: String): Pair<Emotion, String> {
         try {
-            // Extract emotion
+            // 감정 추출
             val emotionMatch = Regex("EMOTION:\\s*([a-zA-Z]+)").find(response)
             val emotionStr = emotionMatch?.groupValues?.get(1)?.trim()?.lowercase() ?: "neutral"
             
-            // Extract response text
+            // 응답 텍스트 추출
             val responseMatch = Regex("RESPONSE:\\s*(.+)", RegexOption.DOT_MATCHES_ALL).find(response)
             val responseText = responseMatch?.groupValues?.get(1)?.trim() ?: response
             
-            // Map emotion string to Emotion enum
+            // 감정 문자열을 Emotion 열거형으로 변환
             val emotion = when (emotionStr) {
                 "happy" -> Emotion.HAPPY
                 "sad" -> Emotion.SAD
@@ -310,7 +273,7 @@ class ConversationService @Inject constructor(
             
             return Pair(emotion, responseText)
         } catch (e: Exception) {
-            Log.e(TAG, "Error parsing response: $response", e)
+            Log.e(TAG, "응답 파싱 오류: $response", e)
             return Pair(Emotion.NEUTRAL, response)
         }
     }

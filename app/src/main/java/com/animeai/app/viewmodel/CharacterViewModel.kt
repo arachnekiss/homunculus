@@ -66,6 +66,41 @@ class CharacterViewModel @Inject constructor(
     // Audio playback job
     private var audioPlaybackJob: Job? = null
     
+    // 에러 상태
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+    
+    // 로딩 상태
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    
+    /**
+     * 초기화 시 실행
+     */
+    init {
+        // 테스트 데이터 로드
+        loadTestCharacter()
+    }
+
+    /**
+     * 테스트 캐릭터 로드
+     */
+    fun loadTestCharacter() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                // MockData에서 테스트 캐릭터 로드
+                val testCharacter = com.animeai.app.model.MockData.testCharacter
+                initializeCharacter(testCharacter)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading test character", e)
+                _error.value = "테스트 캐릭터를 로드하는 중 오류가 발생했습니다."
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     /**
      * Initialize the character
      */
@@ -76,6 +111,7 @@ class CharacterViewModel @Inject constructor(
         // Start with greeting from character
         viewModelScope.launch {
             try {
+                _isLoading.value = true
                 // Add loading message
                 addSystemMessage("캐릭터가 응답하는 중...")
                 
@@ -92,6 +128,9 @@ class CharacterViewModel @Inject constructor(
                 Log.e(TAG, "Error initializing character", e)
                 removeSystemMessages()
                 addSystemMessage("캐릭터를 불러오는 중 오류가 발생했습니다.")
+                _error.value = "캐릭터를 초기화하는 중 오류가 발생했습니다."
+            } finally {
+                _isLoading.value = false
             }
         }
         

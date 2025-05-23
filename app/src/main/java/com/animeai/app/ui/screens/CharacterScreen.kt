@@ -31,6 +31,9 @@ import com.animeai.app.viewmodel.CharacterViewModel
 @Composable
 fun CharacterScreen(
     viewModel: CharacterViewModel,
+    onNavigateToCreation: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToStore: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Collect state from the ViewModel
@@ -39,6 +42,13 @@ fun CharacterScreen(
     val isSpeaking by viewModel.isSpeaking.collectAsState()
     val remainingCredits by viewModel.remainingCredits.collectAsState()
     val messages by viewModel.messages.collectAsState()
+    
+    // 캐릭터가 없으면 생성 화면으로 이동
+    LaunchedEffect(character) {
+        if (character == null) {
+            onNavigateToCreation()
+        }
+    }
     
     Box(
         modifier = modifier

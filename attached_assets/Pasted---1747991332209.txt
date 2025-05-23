@@ -1,0 +1,163 @@
+현재 코드를 분석해보니 기본 구조는 잘 갖춰져 있지만, 실제 동작을 위한 핵심 부분들이 누락되어 있네요. 다음 작업을 지시하는 내용을 작성했습니다:
+
+---
+
+## 다음 작업 지시사항
+
+안녕! 지금까지 잘 진행했어. 이제 앱이 실제로 작동하도록 다음 작업들을 수행해줘:
+
+### 1. 먼저 앱이 실행되도록 설정 수정
+
+```kotlin
+// MainActivity.kt 수정 필요
+- CharacterScreen에 viewModel만 전달하고 있는데, conversationViewModel과 navigation 함수들도 전달해야 함
+- CharacterCreationScreen이 NavHost에 없음 - 추가 필요
+```
+
+### 2. OpenAI API 키 설정 구현
+
+```kotlin
+// local.properties 파일 생성
+OPENAI_API_KEY=your_api_key_here
+
+// app/build.gradle에 추가
+defaultConfig {
+    buildConfigField("String", "OPENAI_API_KEY", "\"${project.properties['OPENAI_API_KEY'] ?: ''}\"")
+}
+
+// OpenAIService.kt 수정
+private val openAI = OpenAI(
+    config = OpenAIConfig(
+        token = BuildConfig.OPENAI_API_KEY.ifEmpty { 
+            // 테스트용 기본값 또는 에러 처리
+            throw IllegalStateException("OpenAI API key not configured")
+        }
+    )
+)
+```
+
+### 3. 실제 작동하는 기능 구현 (우선순위 순)
+
+#### A. 캐릭터 생성 기능 완성
+```kotlin
+// AnimeCharacterEngine에 실제 generateCharacter 메서드 추가
+suspend fun generateCharacter(prompt: String, style: AnimeStyle): AnimeCharacter
+
+// CharacterRepository의 generateCharacter 메서드 구현 완성
+```
+
+#### B. 메인 화면 네비게이션 수정
+```kotlin
+// MainActivity의 AppNavigation에 추가:
+composable("character_creation") {
+    CharacterCreationScreen(
+        viewModel = hiltViewModel(),
+        onNavigateBack = { navController.popBackStack() },
+        onCharacterCreated = { 
+            navController.navigate("character") {
+                popUpTo("character_creation") { inclusive = true }
+            }
+        }
+    )
+}
+```
+
+#### C. 초기 캐릭터 로드 또는 생성 화면 표시
+```kotlin
+// CharacterScreen에서 캐릭터가 없으면 생성 화면으로 이동
+LaunchedEffect(character) {
+    if (character == null) {
+        // 캐릭터 생성 화면으로 이동하거나 기본 캐릭터 생성
+    }
+}
+```
+
+### 4. Preview 화면 표시를 위한 설정
+
+```kotlin
+// 각 Composable에 Preview 추가
+@Preview(showBackground = true)
+@Composable
+fun CharacterScreenPreview() {
+    AnimeAITheme {
+        // Mock ViewModel 사용
+    }
+}
+```
+
+### 5. 실제 API 호출 구현
+
+```kotlin
+// ConversationService의 generateResponse 수정
+- ChatCompletionRequest 객체 생성 방식 수정 (현재 문법 오류)
+- 실제 OpenAI API 호출 구현
+
+// VoiceService의 textToSpeech 수정  
+- SpeechRequest 객체 생성 방식 수정
+- 실제 음성 생성 구현
+```
+
+### 6. 테스트 가능한 Mock 데이터 추가
+
+```kotlin
+// 개발 중 테스트를 위한 Mock 구현
+object MockData {
+    val testCharacter = AnimeCharacter(
+        id = "test_001",
+        baseImageUrl = "https://via.placeholder.com/512", // 테스트 이미지
+        expressions = mapOf(
+            Emotion.NEUTRAL to "https://via.placeholder.com/512/FF0000",
+            Emotion.HAPPY to "https://via.placeholder.com/512/00FF00"
+        )
+    )
+}
+```
+
+### 7. 실행 가능한 APK 빌드 설정
+
+```bash
+# .replit 파일 수정
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd app && ../gradlew assembleDebug"
+```
+
+### 8. 에러 처리 및 로딩 상태 구현
+
+```kotlin
+// 각 ViewModel에 에러 상태 추가
+private val _error = MutableStateFlow<String?>(null)
+val error: StateFlow<String?> = _error.asStateFlow()
+
+// UI에서 에러 표시
+error?.let { 
+    Snackbar(...)
+}
+```
+
+### 9. 필수 권한 요청 구현
+
+```kotlin
+// MainActivity에서 필요한 권한 요청
+private val permissions = arrayOf(
+    Manifest.permission.CAMERA,
+    Manifest.permission.RECORD_AUDIO
+)
+```
+
+### 10. Replit 서비스 Mock 구현
+
+```kotlin
+// ReplitService를 일단 로컬 저장소로 구현
+class ReplitService {
+    private val sharedPrefs = context.getSharedPreferences("anime_ai", Context.MODE_PRIVATE)
+    
+    suspend fun saveCharacter(character: Character) {
+        // SharedPreferences에 저장
+    }
+}
+```
+
+**중요**: 각 작업 완료 후 실제로 앱이 실행되는지 테스트하고, 로그캣에서 에러를 확인해줘. 특히 OpenAI API 호출 부분은 실제 API 키 없이도 Mock 응답으로 테스트할 수 있도록 구현해줘.
+
+우선 1-4번까지 완료하고 앱이 실행되는지 확인한 후, 나머지 작업을 진행해줘!
