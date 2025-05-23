@@ -13,7 +13,7 @@ import CameraScreen from './screens/CameraScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
 // Global API URL configuration
-global.API_URL = 'https://ba6c4fd8-d9b2-4545-a468-61bb4817b458-00-ux6cqw0zrhjv.kirk.replit.dev';
+global.API_URL = 'http://localhost:5000';
 
 const Stack = createStackNavigator();
 
