@@ -21,8 +21,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd app && ./gradlew installDebug && adb shell am start -n com.animeai.app/.MainActivity"
-waitForPort = 5000
+args = "./gradlew :app:installDebug && adb shell am start -n com.animeai.app/.MainActivity"
 
 [deployment]
-run = ["sh", "-c", "cd app && ./gradlew installDebug && adb shell am start -n com.animeai.app/.MainActivity"]
+run = ["sh", "-c", "./gradlew :app:installDebug && adb shell am start -n com.animeai.app/.MainActivity"]
