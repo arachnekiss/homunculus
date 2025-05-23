@@ -1,126 +1,116 @@
 package com.animeai.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.animeai.app.ui.components.CharacterView
+import com.animeai.app.model.AnimeCharacter
+import com.animeai.app.model.Emotion
+import com.animeai.app.ui.components.AnimatedBackground
+import com.animeai.app.ui.components.AnimatedCharacterView
 import com.animeai.app.ui.components.ChatInterface
-import com.animeai.app.ui.components.CameraView
+import com.animeai.app.ui.components.EmotionIndicator
+import com.animeai.app.ui.components.UsageIndicator
 import com.animeai.app.viewmodel.CharacterViewModel
-import com.animeai.app.viewmodel.ConversationViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Main screen for interacting with the anime character
+ */
 @Composable
 fun CharacterScreen(
-    characterViewModel: CharacterViewModel,
-    conversationViewModel: ConversationViewModel,
-    onNavigateToSettings: () -> Unit,
-    onNavigateToStore: () -> Unit
+    viewModel: CharacterViewModel,
+    modifier: Modifier = Modifier
 ) {
-    var showCamera by remember { mutableStateOf(false) }
+    // Collect state from the ViewModel
+    val character by viewModel.currentCharacter.collectAsState()
+    val emotion by viewModel.currentEmotion.collectAsState()
+    val isSpeaking by viewModel.isSpeaking.collectAsState()
+    val remainingCredits by viewModel.remainingCredits.collectAsState()
+    val messages by viewModel.messages.collectAsState()
     
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = "AI Anime Character") },
-                actions = {
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                    IconButton(onClick = onNavigateToStore) {
-                        Icon(Icons.Default.ShoppingCart, contentDescription = "Store")
-                    }
-                }
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF2D3047),
+                        Color(0xFF1B1B25)
+                    )
+                )
             )
-        }
-    ) { paddingValues ->
+    ) {
+        // Animated background elements (particles, etc.)
+        AnimatedBackground(modifier = Modifier.fillMaxSize())
+        
+        // Character view (upper 70% of screen)
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+                .fillMaxWidth()
+                .fillMaxHeight(0.7f)
+                .align(Alignment.TopCenter)
         ) {
-            // Background - can be customized
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-            )
-            
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // Character Display Area (70% of screen)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(0.7f)
-                ) {
-                    if (showCamera) {
-                        CameraView(
-                            onEmotionDetected = { emotion ->
-                                characterViewModel.updateCharacterEmotion(emotion)
-                                showCamera = false
-                            },
-                            onClose = { showCamera = false }
-                        )
-                    } else {
-                        CharacterView(
-                            character = characterViewModel.currentCharacter.collectAsState().value,
-                            emotion = characterViewModel.currentEmotion.collectAsState().value,
-                            isAnimating = characterViewModel.isAnimating.collectAsState().value,
-                            onTap = { characterViewModel.onCharacterTapped() }
-                        )
-                    }
-                }
-                
-                // Chat Interface (30% of screen)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(0.3f)
-                ) {
-                    ChatInterface(
-                        messages = conversationViewModel.messages.collectAsState().value,
-                        onSendMessage = { message ->
-                            conversationViewModel.sendMessage(message)
-                        },
-                        onMicToggle = { isRecording ->
-                            if (isRecording) {
-                                conversationViewModel.startVoiceRecording()
-                            } else {
-                                conversationViewModel.stopVoiceRecordingAndProcess()
-                            }
-                        },
-                        onCameraToggle = { showCamera = !showCamera }
-                    )
-                }
+            // Animated character
+            character?.let { char ->
+                AnimatedCharacterView(
+                    character = char,
+                    currentEmotion = emotion,
+                    isSpeaking = isSpeaking,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
             
-            // Credits Display
-            Box(
+            // Emotion indicator in top-right corner
+            EmotionIndicator(
+                emotion = emotion,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(8.dp)
-            ) {
-                Surface(
-                    modifier = Modifier.padding(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text(
-                        text = "Credits: ${characterViewModel.userCredits.collectAsState().value}",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-            }
+                    .padding(16.dp)
+            )
         }
+        
+        // Chat interface (lower 30% of screen)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.3f)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0x001B1B25),
+                            Color(0xFF1B1B25)
+                        )
+                    )
+                )
+        ) {
+            ChatInterface(
+                messages = messages,
+                onTextInput = viewModel::sendTextMessage,
+                onVoiceInput = viewModel::startVoiceRecording,
+                onCameraInput = viewModel::captureUserExpression,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        
+        // Credits indicator in top-left
+        UsageIndicator(
+            credits = remainingCredits,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp)
+        )
     }
 }
