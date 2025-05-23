@@ -24,7 +24,7 @@ export default function SettingsScreen({ navigation }) {
   
   const fetchCredits = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/get-credits');
+      const response = await fetch(`${global.API_URL}/api/get-credits`);
       const data = await response.json();
       setCredits(data.creditsRemaining);
     } catch (error) {
@@ -44,7 +44,7 @@ export default function SettingsScreen({ navigation }) {
       const newCredits = credits + creditsNum;
       
       // 서버에 크레딧 저장 (실제로는 유저 ID 등 필요)
-      const response = await fetch('http://localhost:5000/api/save-credits', {
+      const response = await fetch(`${global.API_URL}/api/save-credits`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
