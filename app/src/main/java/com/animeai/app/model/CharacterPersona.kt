@@ -18,37 +18,28 @@ data class CharacterPersona(
 /**
  * Personality types for characters
  */
-enum class Personality {
-    FRIENDLY,
-    SHY,
-    TSUNDERE,
-    COOL,
-    ENERGETIC,
-    MYSTERIOUS,
-    SERIOUS
+enum class Personality(val apiValue: String, val displayName: String) {
+    FRIENDLY("friendly", "Friendly"),
+    SHY("shy", "Shy"),
+    TSUNDERE("tsundere", "Tsundere"),
+    COOL("cool", "Cool"),
+    ENERGETIC("energetic", "Energetic"),
+    MYSTERIOUS("mysterious", "Mysterious"),
+    SERIOUS("serious", "Serious")
 }
 
 /**
  * Speech styles for character dialogue
  */
-enum class SpeechStyle {
-    FORMAL,
-    CASUAL,
-    CUTE,
-    POETIC,
-    SCHOLARLY,
-    PLAYFUL,
-    RESERVED
+enum class SpeechStyle(val apiValue: String, val displayName: String) {
+    FORMAL("formal", "Formal"),
+    CASUAL("casual", "Casual"),
+    CUTE("cute", "Cute"),
+    POETIC("poetic", "Poetic"),
+    SCHOLARLY("scholarly", "Scholarly"),
+    PLAYFUL("playful", "Playful"),
+    RESERVED("reserved", "Reserved")
 }
-
-/**
- * Voice settings for text-to-speech
- */
-@Serializable
-data class VoiceSettings(
-    val pitch: Float = 1.0f,  // Range: 0.5f to 1.5f
-    val speed: Float = 1.0f   // Range: 0.5f to 1.5f
-)
 
 /**
  * User preferences for character generation
@@ -63,9 +54,9 @@ data class UserPreferences(
     fun toJson(): String {
         return """
             {
-                "style": "${preferredStyle.value}",
-                "personality": "${preferredPersonality.name}",
-                "speechStyle": "${preferredSpeechStyle.name}",
+                "style": "${preferredStyle.apiValue}",
+                "personality": "${preferredPersonality.apiValue}",
+                "speechStyle": "${preferredSpeechStyle.apiValue}",
                 "customPrompt": "$customPrompt"
             }
         """.trimIndent()
