@@ -17,8 +17,8 @@ load_dotenv()
 # Configure OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-app = Flask(__name__)
-CORS(app)
+app = Flask(__name__, static_url_path='', static_folder='.')
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # 애플리케이션 시작 시 데이터베이스 초기화
 with app.app_context():
@@ -34,13 +34,13 @@ def shutdown_session(exception=None):
 
 @app.route("/", methods=["GET"])
 def root():
-    return jsonify({"status": "OK", "message": "AnimeAI API Server"})
+    # 기본 경로로 접속하면 웹 인터페이스 제공
+    return app.send_static_file('index.html')
 
-@app.route("/web", methods=["GET"])
-def web():
-    with open('index.html', 'r', encoding='utf-8') as f:
-        html_content = f.read()
-    return html_content
+@app.route("/api/status", methods=["GET"])
+def status():
+    # API 상태 확인용 엔드포인트
+    return jsonify({"status": "OK", "message": "AnimeAI API Server"})
 
 @app.route("/api/health", methods=["GET"])
 def health_check():
@@ -297,5 +297,5 @@ def get_credits():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 8000))
     app.run(host="0.0.0.0", port=port)
