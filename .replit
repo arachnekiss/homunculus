@@ -47,8 +47,8 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd animeai-app && PUBLIC_URL=/ npx expo start --web --port 5173 --non-interactive"
-waitForPort = 19006
+args = "cd animeai-app && npx expo start --web --port 5173 --non-interactive"
+waitForPort = 5173
 
 [deployment]
 run = ["sh", "-c", "./gradlew :app:installDebug && adb shell am start -n com.animeai.app/.MainActivity"]
