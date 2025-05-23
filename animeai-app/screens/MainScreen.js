@@ -13,6 +13,12 @@ import {
 const BUCKET_ID = 'replit-objstore-82708a44-60fd-4562-b6e0-ae6312a9c2d6';
 // 오브젝트 스토리지 URL 기본 경로
 const STORAGE_BASE_URL = `https://${BUCKET_ID}.replit.dev/app_storage`;
+// 캐릭터 이미지 URL
+const CHARACTER_IMAGES = {
+  "미카": "https://i.imgur.com/JqYxQHO.png", // 첨부된 이미지를 외부 이미지 호스팅으로 업로드
+  "유키": "https://i.imgur.com/7FEpnLV.jpg",
+  "타로": "https://i.imgur.com/QnxwWHc.png"
+};
 
 export default function MainScreen() {
   const [characters, setCharacters] = useState([]);
@@ -43,20 +49,25 @@ export default function MainScreen() {
     }
   };
 
-  const getImageUrl = (path) => {
+  const getImageUrl = (path, characterName) => {
     // 이미지 경로가 http로 시작하면 그대로 사용
     if (path && (path.startsWith('http://') || path.startsWith('https://'))) {
       return path;
     }
     
-    // 오브젝트 스토리지 경로로 변환 (기본 이미지는 임시 이미지 사용)
+    // 캐릭터 이름 기반으로 임시 이미지 제공
+    if (characterName && CHARACTER_IMAGES[characterName]) {
+      return CHARACTER_IMAGES[characterName];
+    }
+    
+    // 오브젝트 스토리지 경로로 변환 (기존 경로가 있는 경우)
     if (path && path.startsWith('/assets/')) {
       const imageName = path.split('/').pop();
       return `${STORAGE_BASE_URL}/${imageName}`;
     }
     
     // 기본 이미지
-    return 'https://via.placeholder.com/150';
+    return 'https://i.pravatar.cc/300?img=' + Math.floor(Math.random() * 70);
   };
 
   if (loading) {
@@ -97,7 +108,7 @@ export default function MainScreen() {
               {characters.map(character => (
                 <View key={character.id} style={styles.characterCard}>
                   <Image 
-                    source={{ uri: getImageUrl(character.image_url) }} 
+                    source={{ uri: getImageUrl(character.image_url, character.name) }} 
                     style={styles.characterImage} 
                     resizeMode="cover"
                   />
