@@ -774,9 +774,10 @@
   <!-- Error Message -->
   <div class="error-message" id="errorMessage"></div>
   
+  <script src="character-engine.js"></script>
   <script>
     // API URL
-    const API_URL = '';
+    const API_URL = window.location.origin;
     
     // DOM Elements
     const characterSelection = document.getElementById('characterSelection');
@@ -983,11 +984,18 @@
         messageInput.focus();
       }, 300);
       
-      // Send initial greeting
+      // 캐릭터 엔진 초기화 (또는 재초기화)
       setTimeout(() => {
+        // 기존 엔진이 있으면 새로 초기화
+        initCharacterEngine();
+        
+        // 캐릭터 이미지 설정
+        setupCharacterEmotions(character.name);
+        
+        // Send initial greeting
         receiveMessage(
           `안녕하세요! 저는 ${character.name}입니다. ${character.description} 무엇이든 물어보세요!`,
-          'neutral'
+          'happy'
         );
       }, 500);
     }
@@ -1046,6 +1054,9 @@
           // Add response to chat log
           addToChatLog('ai', currentCharacter.name, data.response);
           
+          // 캐릭터 말하기 애니메이션 시작
+          receiveMessage(data.response, data.emotion || 'neutral');
+          
           // Add to chat history
           chatHistory.push({
             role: 'assistant',
@@ -1067,33 +1078,81 @@
       }
     }
     
+    // 캐릭터 엔진 선언
+    let characterEngine = null;
+    
+    // 캐릭터 엔진 초기화
+    function initCharacterEngine() {
+      characterEngine = new CharacterEngine({
+        characterElement: characterMainImage,
+        speechBubbleElement: speechBubble,
+        emotionBadgeElement: emotionBadge,
+        defaultEmotion: 'neutral'
+      });
+      
+      // 기본 캐릭터 감정 이미지 설정
+      if (currentCharacter) {
+        setupCharacterEmotions(currentCharacter.name);
+      }
+    }
+    
+    // 캐릭터 감정 이미지 설정
+    function setupCharacterEmotions(characterName) {
+      if (!characterEngine) return;
+      
+      // 감정별 이미지 매핑 (임시로 모두 동일한 이미지 사용)
+      const baseImageUrl = getCharacterImageUrl(characterName);
+      const emotionImages = {
+        'happy': baseImageUrl,
+        'sad': baseImageUrl,
+        'angry': baseImageUrl,
+        'surprised': baseImageUrl,
+        'embarrassed': baseImageUrl,
+        'thoughtful': baseImageUrl,
+        'excited': baseImageUrl,
+        'nervous': baseImageUrl,
+        'neutral': baseImageUrl
+      };
+      
+      characterEngine.setEmotionImages(emotionImages);
+    }
+    
     // Receive Message
     function receiveMessage(message, emotion) {
-      // Show emotion badge if provided
-      if (emotion && emotion !== 'neutral') {
-        emotionBadge.textContent = translateEmotion(emotion);
-        emotionBadge.style.display = 'block';
+      // 애니메이션 엔진 사용
+      if (characterEngine) {
+        characterEngine.speak(message, emotion);
       } else {
-        emotionBadge.style.display = 'none';
+        // 기존 코드 (엔진이 없는 경우 폴백)
+        // Show emotion badge if provided
+        if (emotion && emotion !== 'neutral') {
+          emotionBadge.textContent = translateEmotion(emotion);
+          emotionBadge.style.display = 'block';
+        } else {
+          emotionBadge.style.display = 'none';
+        }
+        
+        // Show speech bubble
+        speechText.textContent = message;
+        speechBubble.classList.add('visible');
+        
+        // Show speaking animation
+        characterMainImage.classList.add('speaking');
       }
       
-      // Show speech bubble
-      speechText.textContent = message;
-      speechBubble.classList.add('visible');
-      
-      // Show speaking animation
-      characterMainImage.classList.add('speaking');
-      
-      // Speak message if not muted
+      // Speak message if not muted (음성 합성 기능은 엔진과 별개로 실행)
       if (!isMuted && window.speechSynthesis) {
         speak(message);
       }
       
-      // Hide speech bubble after a delay
-      setTimeout(() => {
-        speechBubble.classList.remove('visible');
-        characterMainImage.classList.remove('speaking');
-      }, message.length * 100 + 3000);
+      // 애니메이션 엔진을 사용하지 않는 경우에만 타이머로 처리
+      if (!characterEngine) {
+        // Hide speech bubble after a delay
+        setTimeout(() => {
+          speechBubble.classList.remove('visible');
+          characterMainImage.classList.remove('speaking');
+        }, message.length * 100 + 3000);
+      }
     }
     
     // Add Message to Chat Log
