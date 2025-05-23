@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AnimeAI - 애니메이션 AI 캐릭터</title>
+  <style>
+    body {
+      font-family: 'Noto Sans KR', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      background: linear-gradient(135deg, #6A11CB 0%, #2575FC 100%);
+      color: white;
+      padding: 20px 0;
+      text-align: center;
+      margin-bottom: 30px;
+      border-radius: 0 0 10px 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+      margin: 0;
+      font-size: 2.5rem;
+    }
+    
+    .subtitle {
+      font-size: 1.2rem;
+      margin-top: 10px;
+      opacity: 0.9;
+    }
+    
+    .characters-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 25px;
+      margin-top: 30px;
+    }
+    
+    .character-card {
+      background-color: white;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .character-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    .character-image {
+      width: 100%;
+      height: 250px;
+      object-fit: cover;
+      border-bottom: 3px solid #6A11CB;
+    }
+    
+    .character-info {
+      padding: 20px;
+    }
+    
+    .character-name {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-top: 0;
+      margin-bottom: 5px;
+      color: #6A11CB;
+    }
+    
+    .character-type {
+      display: inline-block;
+      background-color: #e6e6ff;
+      color: #6A11CB;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      margin-bottom: 15px;
+    }
+    
+    .character-desc {
+      margin-bottom: 20px;
+      line-height: 1.5;
+      color: #666;
+    }
+    
+    .talk-button {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background-color: #6A11CB;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      text-align: center;
+    }
+    
+    .talk-button:hover {
+      background-color: #5910a6;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 50px 0;
+      font-size: 1.5rem;
+      color: #666;
+    }
+    
+    .error {
+      background-color: #ffebee;
+      color: #d32f2f;
+      padding: 20px;
+      border-radius: 5px;
+      margin-top: 20px;
+      text-align: center;
+    }
+    
+    .retry-button {
+      display: inline-block;
+      background-color: #6A11CB;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      margin-top: 15px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    
+    .expressions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .expression-tag {
+      background-color: #f0f0f0;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      color: #555;
+    }
+    
+    .credits-section {
+      text-align: right;
+      margin-top: 30px;
+      color: #666;
+    }
+    
+    .api-status {
+      margin-top: 30px;
+      padding: 15px;
+      background-color: #e8f5e9;
+      border-radius: 5px;
+      font-size: 0.9rem;
+      color: #388e3c;
+    }
+    
+    .api-error {
+      background-color: #ffebee;
+      color: #d32f2f;
+    }
+    
+    footer {
+      margin-top: 50px;
+      text-align: center;
+      padding: 30px 0;
+      background-color: #f0f0f0;
+      color: #666;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>AnimeAI</h1>
+      <p class="subtitle">AI 기반 애니메이션 캐릭터와 대화해보세요</p>
+    </div>
+  </header>
+  
+  <div class="container">
+    <div class="api-status" id="apiStatus">API 서버 연결 확인 중...</div>
+    
+    <h2>캐릭터 목록</h2>
+    <div id="loadingMessage" class="loading">캐릭터 데이터를 불러오는 중...</div>
+    <div id="errorMessage" class="error" style="display: none;">
+      <p>캐릭터 데이터를 불러오는 중 오류가 발생했습니다.</p>
+      <button class="retry-button" onclick="fetchCharacters()">다시 시도</button>
+    </div>
+    
+    <div id="charactersContainer" class="characters-container"></div>
+    
+    <div class="credits-section">
+      <p>남은 크레딧: <span id="creditsRemaining">--</span></p>
+    </div>
+  </div>
+  
+  <footer>
+    <div class="container">
+      <p>© 2025 AnimeAI. React Native와 Flask 기반으로, OpenAI API를 활용하여 개발되었습니다.</p>
+    </div>
+  </footer>
+
+  <script>
+    // API URL
+    const API_URL = 'http://localhost:5000';
+    
+    // 페이지 로드 시 API 상태 확인 및 캐릭터 불러오기
+    document.addEventListener('DOMContentLoaded', () => {
+      checkApiStatus();
+      fetchCharacters();
+      fetchCredits();
+    });
+    
+    // API 서버 상태 확인
+    async function checkApiStatus() {
+      const apiStatusElement = document.getElementById('apiStatus');
+      
+      try {
+        const response = await fetch(`${API_URL}/`);
+        const data = await response.json();
+        
+        if (data.status === "OK") {
+          apiStatusElement.textContent = "API 서버 연결됨: " + data.message;
+        } else {
+          apiStatusElement.textContent = "API 서버 연결 확인 필요";
+          apiStatusElement.classList.add('api-error');
+        }
+      } catch (error) {
+        apiStatusElement.textContent = "API 서버 연결 실패: " + error.message;
+        apiStatusElement.classList.add('api-error');
+      }
+    }
+    
+    // 캐릭터 데이터 불러오기
+    async function fetchCharacters() {
+      const loadingElement = document.getElementById('loadingMessage');
+      const errorElement = document.getElementById('errorMessage');
+      const charactersContainer = document.getElementById('charactersContainer');
+      
+      loadingElement.style.display = 'block';
+      errorElement.style.display = 'none';
+      charactersContainer.innerHTML = '';
+      
+      try {
+        const response = await fetch(`${API_URL}/api/characters`);
+        const data = await response.json();
+        
+        loadingElement.style.display = 'none';
+        
+        if (data.success && data.characters && data.characters.length > 0) {
+          data.characters.forEach(character => {
+            const characterCard = createCharacterCard(character);
+            charactersContainer.appendChild(characterCard);
+          });
+        } else {
+          errorElement.style.display = 'block';
+        }
+      } catch (error) {
+        loadingElement.style.display = 'none';
+        errorElement.style.display = 'block';
+        console.error('캐릭터 데이터 로딩 오류:', error);
+      }
+    }
+    
+    // 캐릭터 카드 생성 함수
+    function createCharacterCard(character) {
+      const card = document.createElement('div');
+      card.className = 'character-card';
+      
+      // 캐릭터 이미지 URL 처리
+      const imageUrl = getCharacterImageUrl(character.name, character.image_url);
+      
+      // 표정 태그 생성
+      const expressionsHtml = Object.keys(character.expressions || {}).map(emotion => 
+        `<span class="expression-tag">${emotion}</span>`
+      ).join('');
+      
+      card.innerHTML = `
+        <img src="${imageUrl}" alt="${character.name}" class="character-image">
+        <div class="character-info">
+          <h3 class="character-name">${character.name}</h3>
+          <span class="character-type">${character.personality?.type || '일반'}</span>
+          <p class="character-desc">${character.description}</p>
+          <div class="expressions">
+            ${expressionsHtml}
+          </div>
+          <button class="talk-button" onclick="talkToCharacter(${character.id})">대화하기</button>
+        </div>
+      `;
+      
+      return card;
+    }
+    
+    // 캐릭터 이미지 URL 처리 함수
+    function getCharacterImageUrl(name, path) {
+      // 기본 이미지 URL (캐릭터별로 다른 이미지 제공)
+      const defaultImages = {
+        "미카": "https://i.imgur.com/JqYxQHO.png",
+        "유키": "https://i.imgur.com/7FEpnLV.jpg",
+        "타로": "https://i.imgur.com/QnxwWHc.png"
+      };
+      
+      // 캐릭터 이름 기반으로 이미지 선택
+      if (name && defaultImages[name]) {
+        return defaultImages[name];
+      }
+      
+      // 기존 경로가 http로 시작하는 경우
+      if (path && (path.startsWith('http://') || path.startsWith('https://'))) {
+        return path;
+      }
+      
+      // 기본 이미지
+      return `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 70)}`;
+    }
+    
+    // 크레딧 정보 가져오기
+    async function fetchCredits() {
+      const creditsElement = document.getElementById('creditsRemaining');
+      
+      try {
+        const response = await fetch(`${API_URL}/api/get-credits?userId=user1`);
+        const data = await response.json();
+        
+        if (data.creditsRemaining !== undefined) {
+          creditsElement.textContent = data.creditsRemaining;
+        } else {
+          creditsElement.textContent = "조회 실패";
+        }
+      } catch (error) {
+        creditsElement.textContent = "조회 실패";
+        console.error('크레딧 정보 로딩 오류:', error);
+      }
+    }
+    
+    // 캐릭터와 대화하기 (현재는 알림만 표시)
+    function talkToCharacter(characterId) {
+      alert(`캐릭터 ID ${characterId}와의 대화 기능은 React Native 앱에서 이용 가능합니다.`);
+    }
+  </script>
+</body>
+</html>

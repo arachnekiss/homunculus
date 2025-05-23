@@ -1,7 +1,7 @@
 import os
 import json
 import base64
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -35,6 +35,12 @@ def shutdown_session(exception=None):
 @app.route("/", methods=["GET"])
 def root():
     return jsonify({"status": "OK", "message": "AnimeAI API Server"})
+
+@app.route("/web", methods=["GET"])
+def web():
+    with open('index.html', 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    return html_content
 
 @app.route("/api/health", methods=["GET"])
 def health_check():

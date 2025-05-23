@@ -24,6 +24,10 @@ args = "API Server"
 task = "workflow.run"
 args = "React Native App"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Web Preview"
+
 [[workflows.workflow]]
 name = "Android App Server"
 author = "agent"
@@ -49,6 +53,15 @@ author = "agent"
 task = "shell.exec"
 args = "cd animeai-app && npx expo start --web --port 5173 --non-interactive"
 waitForPort = 5173
+
+[[workflows.workflow]]
+name = "Web Preview"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python -m http.server 5000"
+waitForPort = 5000
 
 [deployment]
 run = ["sh", "-c", "./gradlew :app:installDebug && adb shell am start -n com.animeai.app/.MainActivity"]
