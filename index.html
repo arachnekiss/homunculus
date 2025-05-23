@@ -255,12 +255,25 @@
       position: relative;
     }
     
+    .canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      z-index: 1;
+    }
+    
     .character-main-image {
       max-height: 80%;
       max-width: 90%;
       object-fit: contain;
       transition: transform 0.3s ease;
       transform-origin: bottom center;
+      z-index: 0;
     }
     
     .character-main-image.speaking {
@@ -826,6 +839,10 @@
   <div class="error-message" id="errorMessage"></div>
   
   <script src="character-engine.js"></script>
+  <script src="assets/js/canvas-animation-engine.js"></script>
+  <script src="assets/js/face-detector.js"></script>
+  <script src="assets/js/emotion-analyzer.js"></script>
+  <script src="assets/js/character-integration.js"></script>
   <script>
     // API URL
     const API_URL = window.location.origin;
@@ -1016,6 +1033,9 @@
       });
     }
     
+    // 캐릭터 통합 컨트롤러
+    let characterController = null;
+    
     // Select Character
     function selectCharacter(character) {
       currentCharacter = character;
@@ -1037,17 +1057,34 @@
       
       // 캐릭터 엔진 초기화 (또는 재초기화)
       setTimeout(() => {
-        // 기존 엔진이 있으면 새로 초기화
-        initCharacterEngine();
+        // 기존 통합 컨트롤러가 있으면 해제
+        if (characterController) {
+          characterController.dispose();
+        }
         
-        // 캐릭터 이미지 설정
+        // 고급 캐릭터 통합 컨트롤러 초기화 
+        characterController = new CharacterIntegrationController({
+          characterImageSelector: '#characterMainImage',
+          canvasContainerSelector: '#canvasContainer',
+          speechBubbleSelector: '#speechBubble',
+          emotionBadgeSelector: '#emotionBadge',
+          useAdvancedAnimation: true, // 고급 캔버스 기반 애니메이션 사용
+          defaultEmotion: 'neutral',
+          apiEndpoint: `${API_URL}/api/emotion-analyze`
+        });
+        
+        // 기본 엔진 초기화 (폴백용)
+        initCharacterEngine();
         setupCharacterEmotions(character.name);
         
         // Send initial greeting
-        receiveMessage(
-          `안녕하세요! 저는 ${character.name}입니다. ${character.description} 무엇이든 물어보세요!`,
-          'happy'
-        );
+        const greeting = `안녕하세요! 저는 ${character.name}입니다. ${character.description} 무엇이든 물어보세요!`;
+        receiveMessage(greeting, 'happy');
+        
+        // 고급 컨트롤러로도 인사 메시지 전송
+        if (characterController) {
+          characterController.speak(greeting, 'happy');
+        }
       }, 500);
     }
     

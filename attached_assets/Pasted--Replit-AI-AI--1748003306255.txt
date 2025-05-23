@@ -1,0 +1,378 @@
+# 🎯 Replit AI 에이전트 개발 작업 지시문
+
+## 📋 **프로젝트 개요**
+AI 캐릭터 실시간 애니메이션 채팅 시스템을 개발합니다. 사용자가 프롬프트로 생성하거나 직접 업로드한 캐릭터 이미지를 Live2D 스타일로 실시간 애니메이션화하여 자연스러운 대화가 가능한 앱을 만드세요.
+
+## 🎨 **1단계: 프론트엔드 애니메이션 엔진 구현**
+
+### **파일 구조**
+```
+frontend/
+├── index.html
+├── components/
+│   ├── CharacterEngine.js
+│   ├── AnimationEngine.js
+│   └── ChatInterface.js
+├── styles/
+│   └── app.css
+└── assets/
+    └── default-characters/
+```
+
+### **핵심 구현 요구사항**
+
+1. **Canvas 기반 실시간 애니메이션 엔진**
+   - 60fps 부드러운 캐릭터 애니메이션
+   - 감정별 표정 변화 (neutral, happy, sad, angry, surprised, excited, embarrassed)
+   - 호흡 애니메이션, 눈 깜빡임, 자연스러운 움직임
+   - 실시간 립싱크 (음성과 입 움직임 동기화)
+
+2. **이미지 처리 시스템**
+   - **업로드된 이미지 분석**: 얼굴 특징점 자동 감지
+   - **애니메이션 포인트 매핑**: 눈, 입, 볼, 눈썹 위치 자동 추출
+   - **레이어 분리**: 배경, 얼굴, 표정 요소 분리 처리
+   - **실시간 변형**: 감정에 따른 각 요소 변형 적용
+
+3. **감정 표현 시스템**
+```javascript
+const emotionMapping = {
+    neutral: { 
+        eyeScale: 1.0, 
+        mouthCurve: 0, 
+        blushAlpha: 0, 
+        eyebrowAngle: 0,
+        headTilt: 0,
+        eyeAnimation: 'normal'
+    },
+    happy: { 
+        eyeScale: 0.8, 
+        mouthCurve: 0.3, 
+        blushAlpha: 0.2, 
+        eyebrowAngle: 0.1,
+        headTilt: 0.05,
+        eyeAnimation: 'sparkle'
+    },
+    // ... 다른 감정들
+};
+```
+
+4. **업로드 이미지 처리 워크플로우**
+   - 사용자 이미지 업로드 → 얼굴 감지 → 특징점 추출 → 애니메이션 레이어 생성 → 실시간 애니메이션 적용
+
+## 🔧 **2단계: 백엔드 API 서버 구현**
+
+### **파일 구조**
+```
+backend/
+├── app.py (Flask 메인 서버)
+├── engines/
+│   ├── character_engine.py
+│   ├── emotion_analyzer.py
+│   ├── image_processor.py
+│   └── animation_generator.py
+├── utils/
+│   ├── face_detection.py
+│   ├── optimization.py
+│   └── cache_manager.py
+└── database/
+    └── models.py
+```
+
+### **API 엔드포인트 구현**
+
+1. **캐릭터 생성 API**
+```python
+@app.route('/api/generate-character', methods=['POST'])
+async def generate_character():
+    # GPT-4o DALL-E로 캐릭터 이미지 생성
+    # 또는 업로드된 이미지 처리
+    pass
+
+@app.route('/api/upload-character', methods=['POST'])
+async def upload_character():
+    # 사용자 업로드 이미지 처리
+    # 얼굴 감지 및 특징점 추출
+    # 애니메이션 데이터 생성
+    pass
+```
+
+2. **실시간 감정 분석**
+```python
+@app.route('/api/emotion-analyze', methods=['POST'])
+async def analyze_emotion():
+    # 텍스트 + 이미지 + 음성 멀티모달 분석
+    # 실시간 감정 예측
+    pass
+```
+
+3. **애니메이션 데이터 생성**
+```python
+@app.route('/api/generate-animation', methods=['POST'])
+async def generate_animation():
+    # 캐릭터 이미지 기반 애니메이션 데이터 생성
+    # 특징점 좌표, 변형 매개변수 반환
+    pass
+```
+
+## 📸 **3단계: 이미지 업로드 캐릭터 처리 시스템**
+
+### **핵심 기능 구현**
+
+1. **이미지 분석 엔진**
+```python
+class ImageCharacterProcessor:
+    def __init__(self):
+        self.face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        self.landmark_detector = dlib.get_frontal_face_detector()
+    
+    async def process_uploaded_image(self, image_data):
+        # 1. 얼굴 영역 감지
+        # 2. 특징점 68개 추출
+        # 3. 애니메이션 포인트 매핑
+        # 4. 레이어 분리 (배경, 얼굴, 머리카락 등)
+        # 5. 애니메이션 메타데이터 생성
+        pass
+    
+    def extract_animation_points(self, landmarks):
+        # 눈, 입, 눈썹, 볼 등의 애니메이션 포인트 추출
+        animation_points = {
+            'left_eye': landmarks[36:42],
+            'right_eye': landmarks[42:48],
+            'mouth': landmarks[48:68],
+            'eyebrows': landmarks[17:27],
+            'cheeks': [landmarks[1], landmarks[15]]
+        }
+        return animation_points
+```
+
+2. **실시간 변형 엔진**
+```javascript
+class ImageAnimationEngine {
+    constructor(originalImage, animationPoints) {
+        this.originalImage = originalImage;
+        this.animationPoints = animationPoints;
+        this.currentEmotion = 'neutral';
+    }
+    
+    applyEmotionTransform(emotion, intensity) {
+        // 업로드된 이미지에 실시간 감정 변형 적용
+        // 메시 워핑을 통한 자연스러운 변형
+    }
+    
+    renderFrame() {
+        // Canvas에 변형된 캐릭터 렌더링
+    }
+}
+```
+
+## ⚡ **4단계: 성능 최적화 시스템**
+
+### **구현할 최적화 기능들**
+
+1. **Redis 캐싱 시스템**
+```python
+# 캐릭터 생성 결과 캐싱
+# 감정 분석 결과 캐싱  
+# 애니메이션 데이터 캐싱
+```
+
+2. **배치 처리 시스템**
+```python
+# 여러 감정 분석 요청 배치 처리
+# API 호출 비용 최적화
+```
+
+3. **적응형 품질 시스템**
+```python
+# 사용자 등급별 차등 품질
+# 네트워크 상태에 따른 동적 품질 조절
+```
+
+4. **WebSocket 실시간 통신**
+```python
+# 실시간 감정 변화 스트리밍
+# 음성 인식 실시간 처리
+```
+
+## 📱 **5단계: 통합 UI/UX 구현**
+
+### **모바일 최적화 인터페이스**
+
+1. **메인 화면 레이아웃**
+   - 상단: 캐릭터 애니메이션 영역 (60% 화면)
+   - 하단: 채팅 인터페이스 (40% 화면)
+   - 플로팅 버튼: 음성 인식, 카메라, 설정
+
+2. **캐릭터 생성/업로드 UI**
+```html
+<!-- 캐릭터 생성 모달 -->
+<div class="character-creation-modal">
+    <div class="tabs">
+        <button class="tab active" data-tab="generate">AI 생성</button>
+        <button class="tab" data-tab="upload">이미지 업로드</button>
+    </div>
+    
+    <div class="tab-content generate active">
+        <textarea placeholder="원하는 캐릭터를 설명해주세요..."></textarea>
+        <div class="style-options">
+            <button data-style="anime">애니메이션</button>
+            <button data-style="realistic">실사</button>
+            <button data-style="chibi">치비</button>
+        </div>
+    </div>
+    
+    <div class="tab-content upload">
+        <div class="image-upload-area">
+            <input type="file" accept="image/*" id="character-upload">
+            <label for="character-upload">캐릭터 이미지 업로드</label>
+        </div>
+        <div class="processing-preview">
+            <!-- 업로드된 이미지 미리보기 및 특징점 표시 -->
+        </div>
+    </div>
+</div>
+```
+
+3. **실시간 감정 표시**
+```html
+<div class="emotion-indicator">
+    <div class="current-emotion">😊 Happy</div>
+    <div class="emotion-intensity">
+        <div class="intensity-bar" style="width: 75%"></div>
+    </div>
+</div>
+```
+
+## 🔧 **6단계: 환경 설정 및 배포**
+
+### **필요한 패키지 설치**
+```bash
+# requirements.txt
+flask==2.3.3
+flask-cors==4.0.0
+flask-socketio==5.3.6
+openai==1.0.0
+opencv-python==4.8.1.78
+dlib==19.24.2
+pillow==10.0.1
+redis==5.0.1
+numpy==1.24.3
+mediapipe==0.10.7
+tensorflow==2.13.0
+websockets==11.0.3
+```
+
+### **환경 변수 설정**
+```bash
+# Replit Secrets에 추가
+OPENAI_API_KEY=your_openai_api_key
+REDIS_URL=redis://localhost:6379
+DATABASE_URL=sqlite:///character_ai.db
+UPLOAD_FOLDER=./uploads
+MAX_FILE_SIZE=10485760  # 10MB
+```
+
+## 🎯 **핵심 구현 지침**
+
+### **1. 업로드 이미지 처리 워크플로우**
+```python
+async def process_user_image(image_file):
+    # 1. 이미지 로드 및 전처리
+    image = cv2.imread(image_file)
+    
+    # 2. 얼굴 감지
+    faces = face_detector.detectMultiScale(image)
+    
+    # 3. 특징점 추출 (68개 랜드마크)
+    landmarks = landmark_detector(image, faces[0])
+    
+    # 4. 애니메이션 포인트 매핑
+    animation_data = map_animation_points(landmarks)
+    
+    # 5. 레이어 분리
+    layers = separate_image_layers(image, landmarks)
+    
+    # 6. 메타데이터 생성
+    character_metadata = {
+        'animation_points': animation_data,
+        'layers': layers,
+        'face_bounds': faces[0],
+        'original_size': image.shape
+    }
+    
+    return character_metadata
+```
+
+### **2. 실시간 애니메이션 적용**
+```javascript
+class RealTimeAnimator {
+    constructor(characterData, canvasElement) {
+        this.characterData = characterData;
+        this.canvas = canvasElement;
+        this.ctx = this.canvas.getContext('2d');
+        this.animationFrame = null;
+    }
+    
+    updateEmotion(emotion, intensity) {
+        // 감정에 따른 실시간 변형 적용
+        const transform = this.calculateTransform(emotion, intensity);
+        this.applyTransform(transform);
+    }
+    
+    calculateTransform(emotion, intensity) {
+        // 업로드된 이미지의 특징점 기반 변형 계산
+        const basePoints = this.characterData.animation_points;
+        const emotionMapping = this.getEmotionMapping(emotion);
+        
+        return this.interpolateTransform(basePoints, emotionMapping, intensity);
+    }
+}
+```
+
+### **3. 통합 테스트 케이스**
+```python
+# 테스트할 기능들
+test_cases = [
+    "프롬프트로 생성된 캐릭터 애니메이션",
+    "업로드된 애니메이션 이미지 처리", 
+    "업로드된 실사 이미지 처리",
+    "실시간 감정 변화 애니메이션",
+    "음성 인식 연동 립싱크",
+    "카메라 감정 인식 연동",
+    "다중 캐릭터 관리",
+    "대화 히스토리 저장/불러오기"
+]
+```
+
+## 📋 **최종 체크리스트**
+
+- [ ] Canvas 기반 실시간 애니메이션 엔진 구현
+- [ ] 업로드 이미지 얼굴 감지 및 특징점 추출
+- [ ] 감정별 실시간 변형 시스템
+- [ ] GPT-4o 캐릭터 생성 API 연동
+- [ ] 멀티모달 감정 분석 시스템
+- [ ] Redis 캐싱 및 성능 최적화
+- [ ] WebSocket 실시간 통신
+- [ ] 모바일 최적화 UI/UX
+- [ ] 배치 처리 비용 최적화
+- [ ] 데이터베이스 설계 및 구현
+
+## 🚀 **실행 명령어**
+
+```bash
+# 1. 환경 설정
+pip install -r requirements.txt
+
+# 2. Redis 서버 시작
+redis-server
+
+# 3. Flask 서버 실행
+python app.py
+
+# 4. 프론트엔드 서빙
+# index.html을 브라우저에서 열기
+```
+
+---
+
+**이 지시문을 바탕으로 완전히 동작하는 AI 캐릭터 실시간 애니메이션 채팅 시스템을 구현해주세요. 특히 사용자가 업로드한 이미지도 실시간 애니메이션이 가능하도록 이미지 처리 엔진에 중점을 두고 개발해주세요.**

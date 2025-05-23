@@ -1,0 +1,602 @@
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
+import openai
+import cv2
+import numpy as np
+import base64
+import io
+import json
+import asyncio
+from PIL import Image, ImageDraw, ImageFilter
+import sqlite3
+from datetime import datetime
+import os
+from threading import Lock
+import requests
+
+app = Flask(__name__)
+CORS(app)
+
+# OpenAI API 설정
+openai.api_key = os.getenv('OPENAI_API_KEY')
+
+class CharacterAIEngine:
+    def __init__(self):
+        self.db_lock = Lock()
+        self.init_database()
+        self.emotion_cache = {}
+        
+    def init_database(self):
+        """데이터베이스 초기화"""
+        with sqlite3.connect('character_ai.db') as conn:
+            cursor = conn.cursor()
+            
+            # 캐릭터 테이블
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS characters (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT,
+                    name TEXT,
+                    personality TEXT,
+                    image_url TEXT,
+                    config JSON,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # 대화 기록 테이블
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS conversations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    character_id INTEGER,
+                    user_message TEXT,
+                    ai_response TEXT,
+                    emotion TEXT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (character_id) REFERENCES characters (id)
+                )
+            ''')
+            
+            # 감정 분석 캐시 테이블
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS emotion_cache (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    input_hash TEXT UNIQUE,
+                    emotion_data JSON,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            conn.commit()
+
+    async def generate_character_image(self, prompt, style="anime"):
+        """GPT-4o를 사용한 캐릭터 이미지 생성"""
+        try:
+            # 상세한 프롬프트 구성
+            detailed_prompt = f"""
+            Create a high-quality {style} style character portrait:
+            {prompt}
+            
+            Requirements:
+            - Clean, detailed anime/manga art style
+            - Neutral facial expression
+            - School uniform or casual clothes
+            - High resolution, professional quality
+            - Suitable for real-time animation
+            - Clear facial features for emotion detection
+            """
+            
+            response = await openai.Image.acreate(
+                model="dall-e-3",
+                prompt=detailed_prompt,
+                size="1024x1024",
+                quality="hd",
+                style="vivid"
+            )
+            
+            image_url = response.data[0].url
+            
+            # 이미지 다운로드 및 전처리
+            processed_image = await self.preprocess_character_image(image_url)
+            
+            return {
+                'success': True,
+                'image_url': processed_image,
+                'original_url': image_url
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    async def preprocess_character_image(self, image_url):
+        """캐릭터 이미지 전처리 - 애니메이션을 위한 최적화"""
+        try:
+            # 이미지 다운로드
+            response = requests.get(image_url)
+            image = Image.open(io.BytesIO(response.content))
+            
+            # 얼굴 영역 감지 및 크롭
+            image = self.detect_and_crop_face(image)
+            
+            # 이미지 최적화
+            image = self.optimize_for_animation(image)
+            
+            # Base64로 인코딩
+            buffer = io.BytesIO()
+            image.save(buffer, format='PNG', quality=95)
+            img_str = base64.b64encode(buffer.getvalue()).decode()
+            
+            return f"data:image/png;base64,{img_str}"
+            
+        except Exception as e:
+            print(f"이미지 전처리 오류: {e}")
+            return image_url  # 원본 반환
+
+    def detect_and_crop_face(self, image):
+        """얼굴 감지 및 크롭"""
+        try:
+            # PIL을 OpenCV 형식으로 변환
+            opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+            
+            # 얼굴 감지
+            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+            faces = face_cascade.detectMultiScale(opencv_image, 1.1, 4)
+            
+            if len(faces) > 0:
+                # 가장 큰 얼굴 선택
+                (x, y, w, h) = max(faces, key=lambda face: face[2] * face[3])
+                
+                # 여유 공간 추가
+                margin = int(max(w, h) * 0.3)
+                x1 = max(0, x - margin)
+                y1 = max(0, y - margin)
+                x2 = min(image.width, x + w + margin)
+                y2 = min(image.height, y + h + margin)
+                
+                # 크롭
+                cropped = image.crop((x1, y1, x2, y2))
+                
+                # 정사각형으로 리사이즈
+                size = max(cropped.width, cropped.height)
+                new_image = Image.new('RGBA', (size, size), (255, 255, 255, 0))
+                new_image.paste(cropped, ((size - cropped.width) // 2, (size - cropped.height) // 2))
+                
+                return new_image.resize((512, 512), Image.Resampling.LANCZOS)
+            
+            return image.resize((512, 512), Image.Resampling.LANCZOS)
+            
+        except Exception as e:
+            print(f"얼굴 감지 오류: {e}")
+            return image.resize((512, 512), Image.Resampling.LANCZOS)
+
+    def optimize_for_animation(self, image):
+        """애니메이션을 위한 이미지 최적화"""
+        try:
+            # 색상 채도 향상
+            from PIL import ImageEnhance
+            
+            enhancer = ImageEnhance.Color(image)
+            image = enhancer.enhance(1.2)
+            
+            # 대비 향상
+            enhancer = ImageEnhance.Contrast(image)
+            image = enhancer.enhance(1.1)
+            
+            # 선명도 향상
+            enhancer = ImageEnhance.Sharpness(image)
+            image = enhancer.enhance(1.1)
+            
+            return image
+            
+        except Exception as e:
+            print(f"이미지 최적화 오류: {e}")
+            return image
+
+    async def analyze_emotion_multimodal(self, text=None, image=None, audio=None):
+        """멀티모달 감정 분석"""
+        emotions = {
+            'primary': 'neutral',
+            'confidence': 0.5,
+            'secondary_emotions': [],
+            'intensity': 0.5
+        }
+        
+        try:
+            # 텍스트 기반 감정 분석
+            if text:
+                text_emotion = await self.analyze_text_emotion(text)
+                emotions.update(text_emotion)
+            
+            # 이미지 기반 감정 분석
+            if image:
+                image_emotion = await self.analyze_image_emotion(image)
+                emotions = self.combine_emotions(emotions, image_emotion)
+            
+            # 음성 기반 감정 분석 (향후 구현)
+            if audio:
+                audio_emotion = await self.analyze_audio_emotion(audio)
+                emotions = self.combine_emotions(emotions, audio_emotion)
+                
+            return emotions
+            
+        except Exception as e:
+            print(f"감정 분석 오류: {e}")
+            return emotions
+
+    async def analyze_text_emotion(self, text):
+        """텍스트 감정 분석"""
+        try:
+            # 캐시 확인
+            text_hash = str(hash(text))
+            cached = self.get_cached_emotion(text_hash)
+            if cached:
+                return cached
+            
+            response = await openai.ChatCompletion.acreate(
+                model="gpt-4",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": """당신은 텍스트의 감정을 분석하는 전문가입니다. 
+                        다음 감정 중에서 분석해주세요: neutral, happy, sad, angry, surprised, excited, embarrassed
+                        JSON 형식으로 응답해주세요:
+                        {
+                            "primary": "감정",
+                            "confidence": 0.0-1.0,
+                            "intensity": 0.0-1.0,
+                            "secondary_emotions": ["보조감정1", "보조감정2"]
+                        }"""
+                    },
+                    {
+                        "role": "user",
+                        "content": f"다음 텍스트의 감정을 분석해주세요: {text}"
+                    }
+                ]
+            )
+            
+            emotion_data = json.loads(response.choices[0].message.content)
+            
+            # 캐시 저장
+            self.cache_emotion(text_hash, emotion_data)
+            
+            return emotion_data
+            
+        except Exception as e:
+            print(f"텍스트 감정 분석 오류: {e}")
+            return {"primary": "neutral", "confidence": 0.5, "intensity": 0.5, "secondary_emotions": []}
+
+    async def analyze_image_emotion(self, image_data):
+        """이미지 기반 감정 분석"""
+        try:
+            response = await openai.ChatCompletion.acreate(
+                model="gpt-4-vision-preview",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": """이 이미지에서 사람의 감정을 분석해주세요. 
+                                다음 감정 중에서 선택: neutral, happy, sad, angry, surprised, excited, embarrassed
+                                JSON 형식으로 응답해주세요:
+                                {
+                                    "primary": "감정",
+                                    "confidence": 0.0-1.0,
+                                    "intensity": 0.0-1.0
+                                }"""
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": image_data}
+                            }
+                        ]
+                    }
+                ]
+            )
+            
+            return json.loads(response.choices[0].message.content)
+            
+        except Exception as e:
+            print(f"이미지 감정 분석 오류: {e}")
+            return {"primary": "neutral", "confidence": 0.5, "intensity": 0.5}
+
+    def combine_emotions(self, emotion1, emotion2):
+        """두 감정 분석 결과를 조합"""
+        # 신뢰도가 높은 감정을 우선시
+        if emotion2.get('confidence', 0) > emotion1.get('confidence', 0):
+            primary = emotion2['primary']
+            confidence = emotion2['confidence']
+        else:
+            primary = emotion1['primary']
+            confidence = emotion1['confidence']
+        
+        # 강도는 평균값 사용
+        intensity = (emotion1.get('intensity', 0.5) + emotion2.get('intensity', 0.5)) / 2
+        
+        return {
+            'primary': primary,
+            'confidence': confidence,
+            'intensity': intensity,
+            'secondary_emotions': list(set(
+                emotion1.get('secondary_emotions', []) + 
+                emotion2.get('secondary_emotions', [])
+            ))
+        }
+
+    async def generate_character_response(self, character_id, user_input, emotion_context):
+        """캐릭터 응답 생성"""
+        try:
+            # 캐릭터 정보 가져오기
+            character = self.get_character(character_id)
+            if not character:
+                return {"error": "캐릭터를 찾을 수 없습니다"}
+            
+            # 대화 히스토리 가져오기
+            conversation_history = self.get_conversation_history(character_id, limit=10)
+            
+            # 시스템 프롬프트 구성
+            system_prompt = f"""
+            당신은 {character['name']}입니다.
+            성격: {character['personality']}
+            
+            현재 감정 상태: {emotion_context.get('primary', 'neutral')}
+            감정 강도: {emotion_context.get('intensity', 0.5)}
+            
+            다음 특성을 유지해주세요:
+            1. 일관된 성격과 말투
+            2. 현재 감정에 맞는 반응
+            3. 자연스럽고 친근한 대화
+            4. 이전 대화 맥락 고려
+            
+            응답은 다음 JSON 형식으로 해주세요:
+            {
+                "response": "실제 응답 메시지",
+                "emotion": "응답할 때의 감정",
+                "action": "특별한 동작이나 표현",
+                "voice_tone": "음성 톤 (happy, gentle, excited 등)"
+            }
+            """
+            
+            # 대화 히스토리 구성
+            messages = [{"role": "system", "content": system_prompt}]
+            
+            for conv in conversation_history:
+                messages.append({"role": "user", "content": conv['user_message']})
+                messages.append({"role": "assistant", "content": conv['ai_response']})
+            
+            messages.append({"role": "user", "content": user_input})
+            
+            response = await openai.ChatCompletion.acreate(
+                model="gpt-4",
+                messages=messages,
+                temperature=0.8,
+                max_tokens=200
+            )
+            
+            response_data = json.loads(response.choices[0].message.content)
+            
+            # 대화 기록 저장
+            self.save_conversation(character_id, user_input, response_data['response'], response_data['emotion'])
+            
+            return response_data
+            
+        except Exception as e:
+            print(f"응답 생성 오류: {e}")
+            return {
+                "response": "죄송해요, 잠시 문제가 있는 것 같아요.",
+                "emotion": "embarrassed",
+                "action": "apologetic",
+                "voice_tone": "gentle"
+            }
+
+    def get_character(self, character_id):
+        """캐릭터 정보 조회"""
+        with self.db_lock:
+            with sqlite3.connect('character_ai.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT * FROM characters WHERE id = ?", 
+                    (character_id,)
+                )
+                row = cursor.fetchone()
+                
+                if row:
+                    return {
+                        'id': row[0],
+                        'user_id': row[1],
+                        'name': row[2],
+                        'personality': row[3],
+                        'image_url': row[4],
+                        'config': json.loads(row[5]) if row[5] else {}
+                    }
+                return None
+
+    def save_conversation(self, character_id, user_message, ai_response, emotion):
+        """대화 기록 저장"""
+        with self.db_lock:
+            with sqlite3.connect('character_ai.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """INSERT INTO conversations 
+                       (character_id, user_message, ai_response, emotion) 
+                       VALUES (?, ?, ?, ?)""",
+                    (character_id, user_message, ai_response, emotion)
+                )
+                conn.commit()
+
+    def get_conversation_history(self, character_id, limit=10):
+        """대화 히스토리 조회"""
+        with self.db_lock:
+            with sqlite3.connect('character_ai.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """SELECT user_message, ai_response, emotion, timestamp 
+                       FROM conversations 
+                       WHERE character_id = ? 
+                       ORDER BY timestamp DESC 
+                       LIMIT ?""",
+                    (character_id, limit)
+                )
+                
+                rows = cursor.fetchall()
+                return [
+                    {
+                        'user_message': row[0],
+                        'ai_response': row[1],
+                        'emotion': row[2],
+                        'timestamp': row[3]
+                    }
+                    for row in reversed(rows)  # 시간순 정렬
+                ]
+
+    def cache_emotion(self, input_hash, emotion_data):
+        """감정 분석 결과 캐시"""
+        with self.db_lock:
+            with sqlite3.connect('character_ai.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """INSERT OR REPLACE INTO emotion_cache 
+                       (input_hash, emotion_data) VALUES (?, ?)""",
+                    (input_hash, json.dumps(emotion_data))
+                )
+                conn.commit()
+
+    def get_cached_emotion(self, input_hash):
+        """캐시된 감정 분석 결과 조회"""
+        with self.db_lock:
+            with sqlite3.connect('character_ai.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT emotion_data FROM emotion_cache WHERE input_hash = ?",
+                    (input_hash,)
+                )
+                row = cursor.fetchone()
+                
+                if row:
+                    return json.loads(row[0])
+                return None
+
+# 글로벌 엔진 인스턴스
+engine = CharacterAIEngine()
+
+# API 엔드포인트들
+
+@app.route('/api/generate-character', methods=['POST'])
+async def generate_character():
+    """캐릭터 생성 API"""
+    data = request.json
+    
+    prompt = data.get('prompt', '')
+    style = data.get('style', 'anime')
+    user_id = data.get('user_id', 'anonymous')
+    
+    # 캐릭터 이미지 생성
+    result = await engine.generate_character_image(prompt, style)
+    
+    if result['success']:
+        # 데이터베이스에 캐릭터 저장
+        with engine.db_lock:
+            with sqlite3.connect('character_ai.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """INSERT INTO characters (user_id, name, personality, image_url, config) 
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (
+                        user_id,
+                        data.get('name', '미카'),
+                        data.get('personality', 'friendly'),
+                        result['image_url'],
+                        json.dumps(data.get('config', {}))
+                    )
+                )
+                character_id = cursor.lastrowid
+                conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'character_id': character_id,
+            'image_url': result['image_url']
+        })
+    else:
+        return jsonify(result), 500
+
+@app.route('/api/chat', methods=['POST'])
+async def chat():
+    """채팅 API"""
+    data = request.json
+    
+    character_id = data.get('character_id')
+    user_input = data.get('message', '')
+    image_data = data.get('image')  # 카메라 이미지
+    
+    # 감정 분석
+    emotion_context = await engine.analyze_emotion_multimodal(
+        text=user_input,
+        image=image_data
+    )
+    
+    # 캐릭터 응답 생성
+    response = await engine.generate_character_response(
+        character_id, user_input, emotion_context
+    )
+    
+    return jsonify({
+        'response': response,
+        'emotion_context': emotion_context,
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/api/emotion-analyze', methods=['POST'])
+async def analyze_emotion():
+    """감정 분석 API"""
+    data = request.json
+    
+    result = await engine.analyze_emotion_multimodal(
+        text=data.get('text'),
+        image=data.get('image'),
+        audio=data.get('audio')
+    )
+    
+    return jsonify(result)
+
+@app.route('/api/characters/<user_id>', methods=['GET'])
+def get_user_characters(user_id):
+    """사용자의 캐릭터 목록 조회"""
+    with engine.db_lock:
+        with sqlite3.connect('character_ai.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, name, personality, image_url, created_at FROM characters WHERE user_id = ?",
+                (user_id,)
+            )
+            
+            characters = [
+                {
+                    'id': row[0],
+                    'name': row[1],
+                    'personality': row[2],
+                    'image_url': row[3],
+                    'created_at': row[4]
+                }
+                for row in cursor.fetchall()
+            ]
+    
+    return jsonify(characters)
+
+@app.route('/api/conversation-history/<character_id>', methods=['GET'])
+def get_conversation_history(character_id):
+    """대화 히스토리 조회"""
+    limit = request.args.get('limit', 50, type=int)
+    history = engine.get_conversation_history(character_id, limit)
+    return jsonify(history)
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """헬스 체크"""
+    return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
