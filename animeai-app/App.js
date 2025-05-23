@@ -2,13 +2,16 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 
 // Import screens
 import HomeScreen from './screens/HomeScreen';
 import CharacterScreen from './screens/CharacterScreen';
 import CameraScreen from './screens/CameraScreen';
 import SettingsScreen from './screens/SettingsScreen';
+
+// Global API URL configuration
+global.API_URL = 'https://5000-replit-20b2840bd7a9343-6rfczp79fwe.us.replit.dev';
 
 const Stack = createStackNavigator();
 

@@ -69,7 +69,7 @@ export default function CharacterScreen({ route, navigation }) {
   
   const fetchCredits = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/get-credits');
+      const response = await fetch(`${global.API_URL}/api/get-credits`);
       const data = await response.json();
       setCredits(data.creditsRemaining);
     } catch (error) {
@@ -104,7 +104,7 @@ export default function CharacterScreen({ route, navigation }) {
     
     try {
       // API로 메시지 전송
-      const response = await fetch('http://localhost:5000/api/chat', {
+      const response = await fetch(`${global.API_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -143,7 +143,7 @@ export default function CharacterScreen({ route, navigation }) {
       setCredits(newCredits);
       
       // 서버에 크레딧 저장 (실제로는 유저 ID 등 필요)
-      await fetch('http://localhost:5000/api/save-credits', {
+      await fetch(`${global.API_URL}/api/save-credits`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -170,7 +170,7 @@ export default function CharacterScreen({ route, navigation }) {
       setIsSpeaking(true);
       
       // API로 TTS 요청
-      const response = await fetch('http://localhost:5000/api/text-to-speech', {
+      const response = await fetch(`${global.API_URL}/api/text-to-speech`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -231,7 +231,7 @@ export default function CharacterScreen({ route, navigation }) {
       // 유저의 감정에 대한 캐릭터 반응 생성
       const emotionPrompt = `사용자가 ${userEmotion} 감정을 보이고 있습니다. 어떻게 반응하시겠어요?`;
       
-      const response = await fetch('http://localhost:5000/api/chat', {
+      const response = await fetch(`${global.API_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -270,7 +270,7 @@ export default function CharacterScreen({ route, navigation }) {
       setCredits(newCredits);
       
       // 서버에 크레딧 저장
-      await fetch('http://localhost:5000/api/save-credits', {
+      await fetch(`${global.API_URL}/api/save-credits`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -60,7 +60,7 @@ export default function HomeScreen({ navigation }) {
 
   const fetchCredits = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/get-credits');
+      const response = await fetch(`${global.API_URL}/api/get-credits`);
       const data = await response.json();
       setCredits(data.creditsRemaining);
     } catch (error) {

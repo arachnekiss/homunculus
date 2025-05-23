@@ -40,7 +40,7 @@ export default function CameraScreen({ route, navigation }) {
         });
         
         // 서버로 표정 분석 요청
-        const response = await fetch('http://localhost:5000/api/analyze-expression', {
+        const response = await fetch(`${global.API_URL}/api/analyze-expression`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
