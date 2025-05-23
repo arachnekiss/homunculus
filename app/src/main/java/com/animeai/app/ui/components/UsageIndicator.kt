@@ -36,54 +36,109 @@ fun UsageIndicator(
     credits: Float,
     modifier: Modifier = Modifier
 ) {
-    // Animate the credits value for smoother display
+    // 부드러운 크레딧 값 변화를 위한 애니메이션
     val animatedCredits by animateFloatAsState(
         targetValue = credits,
-        animationSpec = tween(500),
+        animationSpec = tween(700),
         label = "credits_animation"
     )
     
-    // Progress is based on a relative scale (assuming 100 is full)
+    // 진행률은 상대적인 스케일 기준 (100이 최대)
     val progress = (animatedCredits / 100f).coerceIn(0f, 1f)
     
-    // Color changes based on remaining credits
+    // 남은 크레딧에 따른 색상 변화
     val creditColor = when {
-        credits > 50 -> Color(0xFF4CAF50)  // Green
-        credits > 20 -> Color(0xFFFFC107)  // Yellow/Amber
-        else -> Color(0xFFF44336)          // Red
+        credits > 50 -> Color(0xFF4CAF50)  // 많음 - 녹색
+        credits > 20 -> Color(0xFFFFC107)  // 중간 - 노란색/황색
+        else -> Color(0xFFF44336)          // 적음 - 빨간색
     }
     
-    Box(
+    // 저 크레딧 경고 애니메이션
+    var pulseOpacity by remember { mutableStateOf(1f) }
+    
+    // 크레딧이 적을 때 깜빡이는 경고 효과
+    LaunchedEffect(key1 = credits < 20) {
+        if (credits < 20) {
+            while (true) {
+                // 깜빡임 효과 (1.0f -> 0.6f -> 1.0f)
+                for (i in 0..5) {
+                    pulseOpacity = 1f - (i / 5f * 0.4f)
+                    delay(100)
+                }
+                for (i in 5 downTo 0) {
+                    pulseOpacity = 1f - (i / 5f * 0.4f)
+                    delay(100)
+                }
+                delay(1000) // 깜빡임 사이 간격
+            }
+        } else {
+            pulseOpacity = 1f
+        }
+    }
+    
+    // 디자인 개선된 카드 형태
+    Card(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0x662D3047))
-            .padding(12.dp)
+            .graphicsLayer {
+                // 크레딧이 적을 때 깜빡이는 효과
+                alpha = if (credits < 20) pulseOpacity else 1f
+            },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF2D3047).copy(alpha = 0.8f)
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 4.dp
+        )
     ) {
-        Column {
-            // Credits title and value
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            // 제목과 크레딧 표시 행
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Star,
-                    contentDescription = null,
-                    tint = Color(0xFFFFC107)
-                )
+                // 좌측 제목 부분
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 아이콘 애니메이션 (로테이션)
+                    val iconRotation by animateFloatAsState(
+                        targetValue = if (credits < 20) 10f else 0f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        label = "icon_rotation"
+                    )
+                    
+                    Icon(
+                        imageVector = Icons.Rounded.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFFFC107),
+                        modifier = Modifier
+                            .size(20.dp)
+                            .graphicsLayer {
+                                rotationZ = iconRotation
+                            }
+                    )
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Text(
+                        text = "크레딧",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
+                    )
+                }
                 
-                Spacer(modifier = Modifier.width(4.dp))
-                
-                Text(
-                    text = "크레딧",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
+                // 우측 크레딧 값
                 Text(
                     text = String.format("%.1f", animatedCredits),
-                    fontSize = 16.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = creditColor
                 )
@@ -91,26 +146,58 @@ fun UsageIndicator(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Credits progress bar
+            // 크레딧 진행 표시줄
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
                 color = creditColor,
-                trackColor = Color(0xFF424242)
+                trackColor = Color(0xFF424242).copy(alpha = 0.5f)
             )
             
-            // Low credit warning
-            if (credits < 20) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "크레딧이 부족합니다",
-                    fontSize = 12.sp,
-                    color = Color(0xFFF44336),
-                    modifier = Modifier.align(Alignment.End)
-                )
+            // 적은 크레딧 경고
+            AnimatedVisibility(
+                visible = credits < 20,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFF44336),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(4.dp))
+                    
+                    Text(
+                        text = "크레딧이 부족합니다",
+                        fontSize = 12.sp,
+                        color = Color(0xFFF44336)
+                    )
+                    
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    // 충전 버튼
+                    Text(
+                        text = "충전",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF5762D5),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFF5762D5).copy(alpha = 0.2f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
             }
         }
     }
